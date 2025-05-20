@@ -1,11 +1,9 @@
-version: '3.8'
-
 services:
   app:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: laravel_app
+    container_name: ticket_app
     volumes:
       - ./src:/var/www
     ports:
@@ -13,11 +11,11 @@ services:
     depends_on:
       - db
     networks:
-      - laravel
+      - ticket_network
 
   nginx:
     image: nginx:stable-alpine
-    container_name: laravel_nginx
+    container_name: ticket_nginx
     ports:
       - "8080:80"
     volumes:
@@ -26,24 +24,25 @@ services:
     depends_on:
       - app
     networks:
-      - laravel
+      - ticket_network
 
   db:
     image: mysql:8.0
-    container_name: laravel_db
+    container_name: ticket_db
     restart: unless-stopped
     ports:
-      - "3306:3306"
+      - "3308:3306"
     environment:
-      MYSQL_DATABASE: laravel
+      MYSQL_DATABASE: ticket
       MYSQL_ROOT_PASSWORD: root
     volumes:
       - db_data:/var/lib/mysql
     networks:
-      - laravel
+      - ticket_network
 
 networks:
-  laravel:
+  ticket_network:
+    driver: bridge
 
 volumes:
   db_data:
