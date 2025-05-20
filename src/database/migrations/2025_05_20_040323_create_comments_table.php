@@ -12,9 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('comments', function (Blueprint $table) {
-            $table->uuid();
-            $table->foreignUlid('ticket_id')->constrained('tickets','id')->cascadeOnDelete();
-            $table->foreignUlid('user_id')->nullable()->constrained('users','id')->cascadeOnDelete();
+            $table->uuid('id')->primary();
+            $table->foreignUuid('ticket_id')->constrained('tickets','id')->cascadeOnDelete();
+            $table->foreignUuid('user_id')->nullable()->constrained('users','id')->cascadeOnDelete();
             $table->text('body');
             $table->string('client_name')->nullable();
             $table->string('client_email')->nullable();

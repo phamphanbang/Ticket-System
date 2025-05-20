@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('tickets', function (Blueprint $table) {
-            $table->uuid();
+            $table->uuid('id')->primary();
             $table->string('title');
             $table->text('description');
             $table->enum('status', [1,2,3,4])->default(1);
@@ -21,7 +21,7 @@ return new class extends Migration
             $table->enum('priority', [1,2,3])->default(2);
             $table->dateTime('deadline');
             $table->string('message_id')->nullable();
-            $table->foreignUlid('assign_to')->nullable()->constrained('users','id')->nullOnDelete();
+            $table->foreignUuid('assign_to')->nullable()->constrained('users','id')->nullOnDelete();
             $table->timestamps();
         });
     }

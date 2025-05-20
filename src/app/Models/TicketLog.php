@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 
 class TicketLog extends Model
 {
+    use HasUuids;
 
     protected $fillable = [
         'ticket_id',
