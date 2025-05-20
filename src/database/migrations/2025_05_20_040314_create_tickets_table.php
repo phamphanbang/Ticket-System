@@ -15,10 +15,10 @@ return new class extends Migration
             $table->uuid();
             $table->string('title');
             $table->text('description');
-            $table->enum('status', ['1', '2','3','4'])->default('new');
+            $table->enum('status', [1,2,3,4])->default(1);
             $table->string('client_name');
             $table->string('client_email');
-            $table->enum('priority', ['1', '2', '3'])->default('2');
+            $table->enum('priority', [1,2,3])->default(2);
             $table->dateTime('deadline');
             $table->string('message_id')->nullable();
             $table->foreignUlid('assign_to')->nullable()->constrained('users','id')->nullOnDelete();
