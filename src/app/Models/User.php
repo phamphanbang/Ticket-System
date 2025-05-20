@@ -24,6 +24,7 @@ class User extends Authenticatable
     protected $fillable = [
         'name',
         'email',
+        'role_id',
         'password',
     ];
 
@@ -70,11 +71,11 @@ class User extends Authenticatable
 
     public function isAdmin()
     {
-        return $this->role->name === 'admin';
+        return $this->role->role === 'admin';
     }
 
     public function isStaff()
     {
-        return $this->role->name === 'staff';
+        return $this->role->role === 'staff';
     }
 }

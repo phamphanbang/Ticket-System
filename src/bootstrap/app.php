@@ -1,12 +1,15 @@
 <?php
 
 use Illuminate\Auth\AuthenticationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
+use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -15,21 +18,48 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__ . '/../routes/console.php',
         health: '/up',
     )
-    ->withMiddleware(function (Middleware $middleware) {})
+    ->withMiddleware(function (Middleware $middleware) {
+        $middleware->appendToGroup('api', [
+            EnsureFrontendRequestsAreStateful::class
+        ]);
+    })
     ->withExceptions(function (Exceptions $exceptions) {
         $exceptions->render(
             function (Exception $e, Request $request) {
                 $message = $e->getMessage();
-                $code = Response::HTTP_BAD_REQUEST;
+                $code = Response::HTTP_INTERNAL_SERVER_ERROR;
                 $errors = null;
-                
+                // dd($e);
                 if ($e instanceof AuthenticationException) {
-                    $code = Response::HTTP_UNAUTHORIZED;
+                    return response()->error(
+                        message: __('messages.unauthenticated'),
+                        errors: $errors,
+                        code: Response::HTTP_UNAUTHORIZED
+                    );
                 }
 
                 if ($e instanceof ValidationException) {
-                    $code = Response::HTTP_UNPROCESSABLE_ENTITY;
-                    $errors = $e->validator->errors();
+                    return response()->error(
+                        message: $message,
+                        errors: $e->validator->errors(),
+                        code: Response::HTTP_UNPROCESSABLE_ENTITY
+                    );
+                }
+
+                if ($e instanceof ModelNotFoundException) {
+                    return response()->error(
+                        message: $message,
+                        errors: null,
+                        code: Response::HTTP_NOT_FOUND
+                    );
+                }
+
+                if ($e instanceof NotFoundHttpException) {
+                    return response()->error(
+                        message: $message,
+                        errors: null,
+                        code: Response::HTTP_NOT_FOUND
+                    );
                 }
 
                 return response()->error(
