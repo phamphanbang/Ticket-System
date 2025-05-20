@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\User;
+use Illuminate\Auth\AuthenticationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Hash;
 
 class AuthService
@@ -12,7 +14,7 @@ class AuthService
     $user = User::where('email', $email)->first();
 
     if (!$user || !Hash::check($password, $user->password)) {
-      return response()->json(['message' => 'Invalid credentials'], 401);
+      throw new AuthenticationException(__('messages.invalid_credentials'));
     }
 
     if ($user->tokens()) {

@@ -5,9 +5,8 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Validation\UnauthorizedException;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpFoundation\Response;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -20,13 +19,24 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withExceptions(function (Exceptions $exceptions) {
         $exceptions->render(
             function (Exception $e, Request $request) {
+                $message = $e->getMessage();
+                $code = Response::HTTP_BAD_REQUEST;
+                $errors = null;
+                
                 if ($e instanceof AuthenticationException) {
-                    return response()->error(
-                        message: __('messages.unauthenticated'),
-                        errors: null,
-                        code: Response::HTTP_UNAUTHORIZED
-                    );
+                    $code = Response::HTTP_UNAUTHORIZED;
                 }
+
+                if ($e instanceof ValidationException) {
+                    $code = Response::HTTP_UNPROCESSABLE_ENTITY;
+                    $errors = $e->validator->errors();
+                }
+
+                return response()->error(
+                    message: $message,
+                    errors: $errors,
+                    code: $code
+                );
             }
         );
     })->create();
