@@ -3,6 +3,11 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\UserController;
 
 Route::post('auth/login', [AuthController::class, 'login']);
 Route::middleware('auth:sanctum')->post('auth/logout', [AuthController::class, 'logout']);
+
+Route::middleware('auth:sanctum')->group(function () {
+  Route::apiResource('users',UserController::class);
+});
