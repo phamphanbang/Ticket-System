@@ -1,10 +1,17 @@
-<?php 
+<?php
 
 namespace App\Constants;
 
-class UserRoles
+enum UserRoles: string
 {
-    public const ADMIN = 'admin';
-    public const STAFF = 'staff';
+    case ADMIN = 'admin';
+    case STAFF = 'staff';
 
+    public function label(): string
+    {
+        return match ($this) {
+            self::ADMIN => 'admin',
+            self::STAFF => 'staff'
+        };
+    }
 }

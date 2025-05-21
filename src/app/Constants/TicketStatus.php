@@ -18,4 +18,24 @@ enum TicketStatus: int
             self::Closed => 'Closed',
         };
     }
+
+    public function column_label(): string
+    {
+        return match ($this) {
+            self::New => 'new',
+            self::InProgress => 'in_progress',
+            self::Resolved => 'resolved',
+            self::Closed => 'closed',
+        };
+    }
+
+    public static function list()
+    {
+        return [
+            self::New,
+            self::InProgress,
+            self::Resolved,
+            self::Closed,
+        ];
+    }
 }
