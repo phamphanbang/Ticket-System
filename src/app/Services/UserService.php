@@ -20,14 +20,22 @@ class UserService
       $offset = PaginateConstant::DEFAULT_OFFSET;
     }
     $search = $request->input('search', null);
-
-    $query = User::query();
-
+    $query = User::query()->with('role');
     $query = $query->search($search);
-
     $total = $query->count();
-
     $users = $query->offset($offset)->limit($perPage)->get();
+
+    $users = $users->map(function ($user) {
+      return [
+        'id' => $user->id,
+        'name' => $user->name,
+        'email' => $user->email,
+        'role' => $user->role ? $user->role->role : null,
+        'created_at' => $user->created_at,
+        'updated_at' => $user->updated_at
+      ];
+    });
+
     return [
       'data' => $users,
       'pagination' => [
