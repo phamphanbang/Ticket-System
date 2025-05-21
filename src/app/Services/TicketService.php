@@ -4,11 +4,15 @@ namespace App\Services;
 
 use App\Constants\TicketStatus;
 use App\Constants\UserRoles;
+use App\Exceptions\InvalidTicketAssignmentException;
+use App\Mail\ClientAdminAssignStaff;
 use App\Mail\ClientTicketCreated;
 use App\Mail\StaffAssignedToNewTicket;
 use App\Models\Ticket;
+use App\Models\User;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Validation\ValidationException;
 
 class TicketService
 {
@@ -48,6 +52,33 @@ class TicketService
 
     Mail::to($ticket->client_email)
       ->queue(new ClientTicketCreated($ticket));
+
+    return $ticket;
+  }
+
+  public function adminAssignTicket($data,$id)
+  {
+    $ticket = Ticket::where('id', $id)->first();
+    if (!$ticket) {
+      throw new ModelNotFoundException(__('messages.model_not_found', ['model' => 'Ticket']));
+    }
+    if ($ticket->status->value != TicketStatus::New->value) {
+      throw new InvalidTicketAssignmentException(__('error.ticket_assigned_not_new'));
+    }
+
+    if($data['assign_to'] == $ticket->assign_to) {
+      throw new InvalidTicketAssignmentException(__('error.ticket_assigned_same_staff'));
+    }
+
+    $ticket->update($data);
+
+    if ($ticket->assign_to) {
+      Mail::to($ticket->assignTo->email)
+        ->queue(new StaffAssignedToNewTicket($ticket));
+    }
+
+    Mail::to($ticket->client_email)
+      ->queue(new ClientAdminAssignStaff($ticket));
 
     return $ticket;
   }
