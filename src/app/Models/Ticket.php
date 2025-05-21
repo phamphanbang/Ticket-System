@@ -23,6 +23,9 @@ class Ticket extends Model
 
     protected $casts = [
         'status' => TicketStatus::class,
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+        'deadline' => 'datetime',
     ];
 
     public function assignTo()
