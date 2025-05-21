@@ -45,7 +45,9 @@ class UserController extends Controller
     public function update(UpdateUserRequest $request, $id)
     {
         $validated = $request->validated();
-
+        if(array_key_exists('password',$validated) && $validated['password'] == null){
+            unset($validated['password']);
+        }
         $data = $this->userService->updateUser($id,$validated);
 
         return response()->success(
