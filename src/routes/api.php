@@ -12,6 +12,7 @@ Route::middleware('auth:sanctum')->group(function () {
   Route::apiResource('users',UserController::class);
 
   Route::get('tickets', [TicketController::class, 'index'])->name('tickets.index');
-  Route::post('tickets/create', [TicketController::class, 'adminCreateTicket'])->name('admin.create.ticket');
   Route::get('tickets/{ticket}', [TicketController::class, 'show'])->name('admin.show.ticket');
+  Route::post('tickets/create', [TicketController::class, 'adminCreateTicket'])->name('admin.create.ticket');
+  Route::post('tickets/{ticket}/assign', [TicketController::class, 'adminAssignTicket'])->name('admin.assign.ticket');
 });

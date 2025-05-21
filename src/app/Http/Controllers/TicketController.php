@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Constants\TicketStatus;
+use App\Http\Requests\AdminAssignsTicketRequest;
 use App\Http\Requests\AdminCreateTicketRequest;
 use App\Http\Resources\TicketResource;
 use App\Services\TicketService;
@@ -33,11 +34,22 @@ class TicketController extends Controller
         $validated['assign_to'] = $validated['assign_to'] ?? null;
         $validated['status'] = TicketStatus::New;
 
-        $ticket = $this->ticketService->adminCreateTicket($validated);
+        $data = $this->ticketService->adminCreateTicket($validated);
 
         return response()->success(
-            new TicketResource($ticket),
+            new TicketResource($data),
             __('messages.model_created', ['model' => 'Ticket'])
+        );
+    }
+
+    public function adminAssignTicket(AdminAssignsTicketRequest $request,$id)
+    {
+        $validated = $request->validated();
+
+        $data = $this->ticketService->adminAssignTicket($validated,$id);
+        return response()->success(
+            new TicketResource($data),
+            __('messages.ticket_assigned')
         );
     }
 
