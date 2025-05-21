@@ -2,21 +2,33 @@
 
 namespace App\Services;
 
+use App\Constants\PaginateConstant;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
 class UserService
 {
-  public function getListUser()
+  public function getListUser(Request $request)
   {
+    $limit = $request->input('limit', PaginateConstant::DEFAULT_PER_PAGE);
+    $offset = $request->input('offset', PaginateConstant::DEFAULT_OFFSET);
+    $search = $request->input('search', null);
+    
     $query = User::query();
 
+    $query = $query->search($search);
 
-    $users = $query->get();
+    $total = $query->count();
+
+    $users = $query->offset($offset)->limit($limit)->get();
     return [
-      'users' => $users,
+      'data' => $users,
+      'total'=> $total,
+      'offset' => (int) $offset,
+      'limit' => (int) $limit
     ];
   }
 
@@ -31,7 +43,7 @@ class UserService
 
   public function createUser($request)
   {
-    $role = Role::where('role',$request['role'])->first();
+    $role = Role::where('role', $request['role'])->first();
     if (!$role) {
       throw new ModelNotFoundException(__('messages.model_not_found', ['model' => 'Role']));
     }
@@ -51,7 +63,8 @@ class UserService
     return $user;
   }
 
-  public function deleteUser($id) {
+  public function deleteUser($id)
+  {
     $user = $this->getUserById($id);
     $user->delete();
     return null;

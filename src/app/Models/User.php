@@ -5,6 +5,7 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 
 use App\Traits\HasUuid;
+use App\Traits\Searchable;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -14,7 +15,7 @@ use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable, HasUuids, HasApiTokens;
+    use HasFactory, Notifiable, HasUuids, HasApiTokens, Searchable;
 
     /**
      * The attributes that are mass assignable.
@@ -50,6 +51,11 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    protected $searchable = [
+        'name',
+        'email',        
+    ];
 
     public $incrementing = false;
     protected $keyType = 'string';

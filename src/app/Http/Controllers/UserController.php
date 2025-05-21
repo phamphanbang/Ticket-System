@@ -14,11 +14,11 @@ class UserController extends Controller
     {
         $this->userService = $userService;
     }
-    public function index()
+    public function index(Request $request)
     {
-        $data = $this->userService->getListUser();
+        $data = $this->userService->getListUser($request);
         return response()->success(
-            $data['users'],
+            $data,
             __('messages.model_list', ['model' => 'User'])
         );
     }
@@ -33,7 +33,6 @@ class UserController extends Controller
         );
     }
 
-    // Create a new user
     public function store(CreateUserRequest $request)
     {
         $validated = $request->validated();
@@ -43,7 +42,6 @@ class UserController extends Controller
         return response()->success($data, __('messages.model_created', ['model' => 'User']));
     }
 
-    // Update an existing user
     public function update(UpdateUserRequest $request, $id)
     {
         $validated = $request->validated();
@@ -56,7 +54,6 @@ class UserController extends Controller
         );
     }
 
-    // Delete a user
     public function destroy($id)
     {
         $data = $this->userService->deleteUser($id);
