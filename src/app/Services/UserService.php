@@ -14,11 +14,11 @@ class UserService
 {
   public function getListUser(Request $request)
   {
-    $perPage = $request->input('perPage', PaginateConstant::DEFAULT_PER_PAGE);
-    $page = $request->input('page', PaginateConstant::DEFAULT_PAGE);
+    $perPage = $request->input('perPage', PaginateConstant::DEFAULT_PER_PAGE->value);
+    $page = $request->input('page', PaginateConstant::DEFAULT_PAGE->value);
     $offset = ($page - 1) * $perPage;
     if ($offset < 0) {
-      $offset = PaginateConstant::DEFAULT_OFFSET;
+      $offset = PaginateConstant::DEFAULT_OFFSET->value;
     }
     $search = $request->input('search', null);
     $query = User::query()->with('role');

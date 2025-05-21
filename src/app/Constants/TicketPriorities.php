@@ -2,18 +2,27 @@
 
 namespace App\Constants;
 
-class TicketPriorities
+enum TicketPriorities: int
 {
-    public const LOW = 1;
-    public const MEDIUM = 2;
-    public const HIGH = 3;
+    case LOW = 1;
+    case MEDIUM = 2;
+    case HIGH = 3;
 
-    public static function getAll(): array
+    public function label(): string
+    {
+        return match ($this) {
+            self::LOW => 'low',
+            self::MEDIUM => 'medium',
+            self::HIGH => 'high'
+        };
+    }
+
+    public static function list()
     {
         return [
             self::LOW,
             self::MEDIUM,
-            self::HIGH,
+            self::HIGH
         ];
     }
 }

@@ -2,9 +2,9 @@
 
 namespace App\Constants;
 
-class PaginateConstant
+enum PaginateConstant: int
 {
-    public const DEFAULT_PER_PAGE = 10;
-    public const DEFAULT_OFFSET = 0;
-    Public const DEFAULT_PAGE = 1;
+    case DEFAULT_PER_PAGE = 10;
+    case DEFAULT_OFFSET = 0;
+    case DEFAULT_PAGE = 1;
 }
