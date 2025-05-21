@@ -10,4 +10,6 @@ return [
   'model_not_found' => ':model not found.',
   'model_get_success' => ':model retrieved successfully.',
   'model_list' => 'Get :model list successfully.',
+
+  'ticket_assigned' => 'Ticket assigned successfully.',
 ];
