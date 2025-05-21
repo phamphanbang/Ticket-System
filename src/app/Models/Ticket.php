@@ -39,4 +39,9 @@ class Ticket extends Model
     {
         return $this->hasMany(TicketLog::class);
     }
+
+    public function scopeWithStatus($query, $status)
+    {
+        return $query->where('status', $status);
+    }
 }

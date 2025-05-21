@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Constants\TicketStatus;
+use App\Constants\UserRoles;
 use App\Mail\ClientTicketCreated;
 use App\Mail\StaffAssignedToNewTicket;
 use App\Models\Ticket;
@@ -10,6 +12,24 @@ use Illuminate\Support\Facades\Mail;
 
 class TicketService
 {
+  public function getListTicket($request)
+  {
+    $user = auth()->user();
+    $list = [];
+    $query = Ticket::query();
+
+    if ($user->role->role == UserRoles::STAFF->label()) {
+      $query = $query->where('assign_to',$user->id);
+    }
+
+    $statusList = TicketStatus::list();
+
+    foreach ($statusList as $status) {
+      $list[$status->column_label()] = $query->withStatus($status)->get();
+    }
+
+    return $list;
+  }
 
   public function createTicket($data)
   {

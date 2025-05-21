@@ -17,6 +17,15 @@ class TicketController extends Controller
         $this->ticketService = $ticketService;
     }
 
+    public function index(Request $request)
+    {
+        $data = $this->ticketService->getListTicket($request);
+        return response()->success(
+            $data,
+            __('messages.model_list', ['model' => 'Ticket'])
+        );
+    }
+
     public function adminCreateTicket(AdminCreateTicketRequest $request)
     {
 
