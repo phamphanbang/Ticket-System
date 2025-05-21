@@ -24,7 +24,7 @@ class TicketResource extends JsonResource
                 'id' => $this->assignTo->id,
                 'name' => $this->assignTo->name,
                 'email' => $this->assignTo->email,
-                'role' => $this->assignTo->role->role,
+                'role' => $this->assignTo->role,
             ] : null,
             'client_email' => $this->client_email,
             'client_name' => $this->client_name,

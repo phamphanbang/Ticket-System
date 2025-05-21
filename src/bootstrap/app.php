@@ -29,7 +29,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 $message = $e->getMessage();
                 $code = $e->getCode() ?? Response::HTTP_INTERNAL_SERVER_ERROR;
                 $errors = null;
-                // dd($e);
+                dd($e);
                 if ($e instanceof AuthenticationException) {
                     return response()->error(
                         message: __('messages.unauthenticated'),

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Constants\PaginateConstant;
+use App\Http\Resources\UserResource;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -30,7 +31,7 @@ class UserService
         'id' => $user->id,
         'name' => $user->name,
         'email' => $user->email,
-        'role' => $user->role ? $user->role->role : null,
+        'role' => $user->role,
         'created_at' => $user->created_at,
         'updated_at' => $user->updated_at
       ];
@@ -65,7 +66,7 @@ class UserService
     $user = User::create([
       'name' => $request['name'],
       'email' => $request['email'],
-      'role_id' => $role->id,
+      'role' => $role,
       'password' => Hash::make($request['password']),
     ]);
     return $user;
@@ -75,7 +76,7 @@ class UserService
   {
     $user = $this->getUserById($id);
     $user->update($data);
-    return $user;
+    return new UserResource($user);
   }
 
   public function deleteUser($id)
