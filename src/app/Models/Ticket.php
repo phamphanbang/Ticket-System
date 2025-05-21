@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Constants\TicketStatus;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 
@@ -17,7 +18,11 @@ class Ticket extends Model
         'priority',
         'deadline',
         'status',
-        'message_id',    
+        'message_id',
+    ];
+
+    protected $casts = [
+        'status' => TicketStatus::class,
     ];
 
     public function assignTo()
