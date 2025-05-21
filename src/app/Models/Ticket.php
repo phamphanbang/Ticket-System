@@ -11,18 +11,18 @@ class Ticket extends Model
     protected $fillable = [
         'title',
         'description',
-        'status',
-        'assigned_to',
+        'assign_to',
         'client_name',
         'client_email',
         'priority',
         'deadline',
+        'status',
         'message_id',    
     ];
 
     public function assignTo()
     {
-        return $this->belongsTo(User::class, 'assigned_to');
+        return $this->belongsTo(User::class, 'assign_to');
     }
 
     public function comments()
