@@ -18,7 +18,7 @@ class TicketResource extends JsonResource
             'id' => $this->id,
             'title' => $this->title,
             'description' => $this->description,
-            'status' => (int) $this->status,
+            'status' => $this->status,
             'priority' => (int) $this->priority,
             'assign_to' => $this->assignTo ? [
                 'id' => $this->assignTo->id,

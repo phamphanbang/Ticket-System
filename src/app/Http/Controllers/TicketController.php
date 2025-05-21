@@ -22,13 +22,9 @@ class TicketController extends Controller
 
         $validated = $request->validated();
         $validated['assign_to'] = $validated['assign_to'] ?? null;
-        $validated['status'] = $validated['assign_to'] ? TicketStatus::IN_PROGRESS : TicketStatus::NEW;
-        // if (array_key_exists('assigned_to', $validated)) {
-        //     $validated['assigned_to'] = $validated['assigned_to'] ?? null;
-        //     $validated['status'] = TicketStatus::IN_PROGRESS;
-        // }
+        $validated['status'] = TicketStatus::New;
 
-        $ticket = $this->ticketService->createTicket($validated);
+        $ticket = $this->ticketService->adminCreateTicket($validated);
 
         return response()->success(
             new TicketResource($ticket),

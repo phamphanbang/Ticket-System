@@ -1,11 +1,21 @@
-<?php 
+<?php
 
 namespace App\Constants;
 
-class TicketStatus
+enum TicketStatus: int
 {
-  public const NEW = 1;
-  public const IN_PROGRESS = 2;
-  public const RESOLVED = 3;
-  public const CLOSED = 4;
+    case New = 1;
+    case InProgress = 2;
+    case Resolved = 3;
+    case Closed = 4;
+
+    public function label(): string
+    {
+        return match ($this) {
+            self::New => 'New',
+            self::InProgress => 'In Progress',
+            self::Resolved => 'Resolved',
+            self::Closed => 'Closed',
+        };
+    }
 }
