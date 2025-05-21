@@ -13,22 +13,29 @@ class UserService
 {
   public function getListUser(Request $request)
   {
-    $limit = $request->input('limit', PaginateConstant::DEFAULT_PER_PAGE);
-    $offset = $request->input('offset', PaginateConstant::DEFAULT_OFFSET);
+    $perPage = $request->input('perPage', PaginateConstant::DEFAULT_PER_PAGE);
+    $page = $request->input('page', PaginateConstant::DEFAULT_PAGE);
+    $offset = ($page - 1) * $perPage;
+    if ($offset < 0) {
+      $offset = PaginateConstant::DEFAULT_OFFSET;
+    }
     $search = $request->input('search', null);
-    
+
     $query = User::query();
 
     $query = $query->search($search);
 
     $total = $query->count();
 
-    $users = $query->offset($offset)->limit($limit)->get();
+    $users = $query->offset($offset)->limit($perPage)->get();
     return [
       'data' => $users,
-      'total'=> $total,
-      'offset' => (int) $offset,
-      'limit' => (int) $limit
+      'pagination' => [
+        'total' => $total,
+        'page' => (int) $page,
+        'perPage' => (int) $perPage
+      ]
+
     ];
   }
 
