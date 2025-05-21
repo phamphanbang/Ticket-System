@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Http\Resources\UserResource;
 use App\Models\User;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -26,7 +27,7 @@ class AuthService
     return [
       'message' => 'Login successful',
       'data' => [
-        'user' => $user,
+        'user' => new UserResource($user),
         'token' => $token
       ]
     ];
