@@ -62,7 +62,19 @@ class TicketController extends Controller
 
         return response()->success(
             new TicketResource($data),
-            __('messages.ticket_processed')
+            __('messages.ticket_confirmed')
+        );
+    }
+
+    public function staffResolveTicket(Request $request, $id)
+    {
+        $validated['status'] = TicketStatus::Resolved;
+
+        $data = $this->ticketService->staffResolveTicket($validated, $id);
+
+        return response()->success(
+            new TicketResource($data),
+            __('messages.ticket_resolved')
         );
     }
 

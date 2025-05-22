@@ -16,4 +16,6 @@ Route::middleware('auth:sanctum')->group(function () {
   Route::post('tickets/create', [TicketController::class, 'adminCreateTicket'])->name('admin.create.ticket');
   Route::post('tickets/{ticket}/assign', [TicketController::class, 'adminAssignTicket'])->name('admin.assign.ticket');
   Route::post('tickets/{ticket}/confirm', [TicketController::class, 'staffConfirmTicket'])->name('staff.confirm.ticket');
+  Route::post('tickets/{ticket}/resolve', [TicketController::class, 'staffResolveTicket'])->name('staff.resolve.ticket');
+
 });

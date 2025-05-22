@@ -8,8 +8,10 @@ use App\Exceptions\InvalidTicketAssignmentException;
 use App\Mail\ClientAdminAssignStaff;
 use App\Mail\ClientTicketCreated;
 use App\Mail\ClientTicketIsConfirmed;
+use App\Mail\ClientTicketIsResolved;
 use App\Mail\StaffAssignedToNewTicket;
 use App\Models\Ticket;
+use App\Validators\TicketValidator;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Mail;
 
@@ -19,7 +21,7 @@ class TicketService
   {
     $user = auth()->user();
     $list = [];
-    $query = Ticket::query();
+    $query = Ticket::query()->with('assignTo');
 
     if ($user->role == UserRoles::STAFF->value) {
       $query = $query->where('assign_to', $user->id);
@@ -28,7 +30,8 @@ class TicketService
     $statusList = TicketStatus::list();
 
     foreach ($statusList as $status) {
-      $list[$status->column_label()] = $query->withStatus($status)->get();
+      $tempQuery = (clone $query)->where('status',$status->value);
+      $list[$status->column_label()] = $tempQuery->get();
     }
 
     return $list;
@@ -58,9 +61,10 @@ class TicketService
   public function adminAssignTicket($data, $id)
   {
     $ticket = Ticket::where('id', $id)->first();
-    $this->checkTicketExists($ticket);
-    $this->checkTicketStatus($ticket, TicketStatus::New->value);
-    $this->checkTicketNotAssignedToTheSameStaff($ticket, $data['assign_to']);
+
+    TicketValidator::checkTicketExists($ticket);
+    TicketValidator::checkTicketStatus($ticket, TicketStatus::New->value);
+    TicketValidator::checkTicketNotAssignedToTheSameStaff($ticket, $data['assign_to']);
 
     $ticket->update($data);
 
@@ -80,9 +84,9 @@ class TicketService
     $user = auth()->user();
     $ticket = Ticket::where('id', $id)->first();
 
-    $this->checkTicketExists($ticket);
-    $this->checkTicketStatus($ticket, TicketStatus::New->value);
-    $this->checkAuthIsAssignedToTicket($ticket, $user->id);
+    TicketValidator::checkTicketExists($ticket);
+    TicketValidator::checkTicketStatus($ticket, TicketStatus::New->value);
+    TicketValidator::checkStaffIsAssignedToTicket($ticket, $user->id);
 
     $ticket->update($data);
 
@@ -91,44 +95,28 @@ class TicketService
     return $ticket;
   }
 
+  public function staffResolveTicket($data, $id)
+  {
+    $user = auth()->user();
+    $ticket = Ticket::where('id', $id)->first();
+
+    TicketValidator::checkTicketExists($ticket);
+    TicketValidator::checkTicketStatus($ticket, TicketStatus::InProgress->value);
+    TicketValidator::checkStaffIsAssignedToTicket($ticket, $user->id);
+
+    $ticket->update($data);
+
+    Mail::to($ticket->client_email)->queue(new ClientTicketIsResolved($ticket));
+
+    return $ticket;
+  }
+
   public function getTicketById($id)
   {
     $ticket = Ticket::find($id);
-    $this->checkTicketExists($ticket);
+    TicketValidator::checkTicketExists($ticket);
 
     return $ticket->load(['assignTo']);
   }
 
-  public function checkTicketExists($ticket)
-  {
-    if ($ticket) return;
-    throw new ModelNotFoundException(__('messages.model_not_found', ['model' => 'Ticket']));
-  }
-
-  public function checkTicketStatus($ticket, $status)
-  {
-    if ($ticket->status->value == $status) return;
-    $errorMessage = "";
-    switch ($status) {
-      case TicketStatus::New->value:
-        $errorMessage = __('error.ticket_assigned_not_new');
-        break;
-
-      default:
-        break;
-    }
-    throw new InvalidTicketAssignmentException($errorMessage);
-  }
-
-  public function checkAuthIsAssignedToTicket($ticket, $staff_id)
-  {
-    if ($ticket->assign_to == $staff_id) return;
-    throw new InvalidTicketAssignmentException(__('error.ticket_assigned_not_your_ticket'));
-  }
-
-  public function checkTicketNotAssignedToTheSameStaff($ticket, $staff_id)
-  {
-    if ($ticket->assign_to != $staff_id) return;
-    throw new InvalidTicketAssignmentException(__('error.ticket_assigned_same_staff'));
-  }
 }
