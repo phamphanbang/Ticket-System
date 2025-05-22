@@ -5,12 +5,14 @@ namespace App\Services;
 use App\Constants\TicketStatus;
 use App\Constants\UserRoles;
 use App\Exceptions\InvalidTicketAssignmentException;
-use App\Mail\ClientAdminAssignStaff;
+use App\Mail\ClientAdminUpdateTicket;
 use App\Mail\ClientTicketCreated;
 use App\Mail\ClientTicketIsConfirmed;
 use App\Mail\ClientTicketIsResolved;
 use App\Mail\StaffAssignedToNewTicket;
+use App\Mail\StaffUnassignedToTicket;
 use App\Models\Ticket;
+use App\Models\User;
 use App\Validators\TicketValidator;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Mail;
@@ -30,7 +32,7 @@ class TicketService
     $statusList = TicketStatus::list();
 
     foreach ($statusList as $status) {
-      $tempQuery = (clone $query)->where('status',$status->value);
+      $tempQuery = (clone $query)->where('status', $status->value);
       $list[$status->column_label()] = $tempQuery->get();
     }
 
@@ -58,23 +60,38 @@ class TicketService
     return $ticket;
   }
 
-  public function adminAssignTicket($data, $id)
+  public function update($data, $id)
   {
     $ticket = Ticket::where('id', $id)->first();
 
     TicketValidator::checkTicketExists($ticket);
     TicketValidator::checkTicketStatus($ticket, TicketStatus::New->value);
-    TicketValidator::checkTicketNotAssignedToTheSameStaff($ticket, $data['assign_to']);
+
+    $oldTitle = $ticket->title;
+    $oldDescription = $ticket->description;
+    $oldAssignId = $ticket->assign_to;
+    $newAssignId = $data['assign_to'];
 
     $ticket->update($data);
 
-    if ($ticket->assign_to) {
-      Mail::to($ticket->assignTo->email)
+    $oldUser = $oldAssignId ? User::find($oldAssignId) : null;
+    $newUser = $newAssignId ? User::find($newAssignId) : null;
+
+    if (is_null($oldAssignId) && $newUser) {
+      Mail::to($newUser->email)
         ->queue(new StaffAssignedToNewTicket($ticket));
     }
 
-    Mail::to($ticket->client_email)
-      ->queue(new ClientAdminAssignStaff($ticket));
+    if ($oldUser && is_null($newAssignId)) {
+      Mail::to($oldUser->email)->queue(new StaffUnassignedToTicket($ticket));
+    }
+    if ($oldUser && $newUser && $oldAssignId !== $newAssignId) {
+      Mail::to($newUser->email)->queue(new StaffAssignedToNewTicket($ticket));
+      Mail::to($oldUser->email)->queue(new StaffUnassignedToTicket($ticket));
+    }
+    if ($oldAssignId !== $newAssignId || $oldTitle !== $ticket->title || $oldDescription !== $ticket->description) {
+      Mail::to($ticket->client_email)->queue(new ClientAdminUpdateTicket($ticket));
+    }
 
     return $ticket;
   }
@@ -118,5 +135,4 @@ class TicketService
 
     return $ticket->load(['assignTo']);
   }
-
 }

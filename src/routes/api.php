@@ -13,8 +13,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
   Route::get('tickets', [TicketController::class, 'index'])->name('tickets.index');
   Route::get('tickets/{ticket}', [TicketController::class, 'show'])->name('admin.show.ticket');
+  Route::put('tickets/{ticket}', [TicketController::class, 'update'])->name('admin.update.ticket');
   Route::post('tickets/create', [TicketController::class, 'adminCreateTicket'])->name('admin.create.ticket');
-  Route::post('tickets/{ticket}/assign', [TicketController::class, 'adminAssignTicket'])->name('admin.assign.ticket');
   Route::post('tickets/{ticket}/confirm', [TicketController::class, 'staffConfirmTicket'])->name('staff.confirm.ticket');
   Route::post('tickets/{ticket}/resolve', [TicketController::class, 'staffResolveTicket'])->name('staff.resolve.ticket');
 
