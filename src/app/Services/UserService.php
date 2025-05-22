@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Constants\PaginateConstant;
+use App\Constants\UserRoles;
 use App\Http\Resources\UserResource;
 use App\Models\Role;
 use App\Models\User;
@@ -14,19 +15,29 @@ class UserService
 {
   public function getListUser(Request $request)
   {
-    $perPage = $request->input('perPage', PaginateConstant::DEFAULT_PER_PAGE->value);
-    $page = $request->input('page', PaginateConstant::DEFAULT_PAGE->value);
-    $offset = ($page - 1) * $perPage;
-    if ($offset < 0) {
-      $offset = PaginateConstant::DEFAULT_OFFSET->value;
-    }
+    $role = $request->input('role', null);
+    $isPaginate = $request->boolean('isPaginate', true);
     $search = $request->input('search', null);
-    $query = User::query()->with('role');
-    $query = $query->search($search);
-    $total = $query->count();
-    $users = $query->offset($offset)->limit($perPage)->get();
 
-    $users = $users->map(function ($user) {
+    $query = User::query();
+    $query = $query->search($search);
+
+    if (UserRoles::tryFrom($role)) {
+      $query = $query->where('role', $role);
+    }
+
+    if ((boolean) $isPaginate) {
+      $perPage = $request->input('perPage', PaginateConstant::DEFAULT_PER_PAGE->value);
+      $page = $request->input('page', PaginateConstant::DEFAULT_PAGE->value);
+      $offset = ($page - 1) * $perPage;
+      if ($offset < 0) {
+        $offset = PaginateConstant::DEFAULT_OFFSET->value;
+      }
+      $query = $query->offset($offset)->limit($perPage);
+      $total = $query->count();
+    }
+
+    $users = $query->get()->map(function ($user) {
       return [
         'id' => $user->id,
         'name' => $user->name,
@@ -37,16 +48,18 @@ class UserService
       ];
     });
 
-    return [
+    return $isPaginate ? [
       'data' => $users,
       'pagination' => [
         'total' => $total,
         'page' => (int) $page,
         'perPage' => (int) $perPage
       ]
-
+    ] : [
+      'data' => $users,
     ];
   }
+
 
   public function getUserById($id)
   {
