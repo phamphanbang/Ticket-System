@@ -21,7 +21,7 @@ class TicketService
   {
     $user = auth()->user();
     $list = [];
-    $query = Ticket::query();
+    $query = Ticket::query()->with('assignTo');
 
     if ($user->role == UserRoles::STAFF->value) {
       $query = $query->where('assign_to', $user->id);
@@ -30,7 +30,8 @@ class TicketService
     $statusList = TicketStatus::list();
 
     foreach ($statusList as $status) {
-      $list[$status->column_label()] = $query->withStatus($status)->get();
+      $tempQuery = (clone $query)->where('status',$status->value);
+      $list[$status->column_label()] = $tempQuery->get();
     }
 
     return $list;
