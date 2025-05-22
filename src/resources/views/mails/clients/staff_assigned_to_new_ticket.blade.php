@@ -62,10 +62,10 @@
       <td class="email-body">
         <p>Hello {{ $ticket->assignTo->name }},</p>
         <p>You have been assigned to ticket <strong>#{{ $ticket->title }}</strong></p>
-        <p class="description">Client name: {{ $ticket->client_name }}</p>
-        <p class="description">Client email: {{ $ticket->client_email }}</p>
-        <p class="description">Status: {{ $ticket->status->label() }}</p>
-        <p class="description">Subject: {{ $ticket->description }}</p>
+        <p>Client name: {{ $ticket->client_name }}</p>
+        <p>Client email: {{ $ticket->client_email }}</p>
+        <p>Status: {{ $ticket->status->label() }}</p>
+        <p>Subject: {{ $ticket->description }}</p>
 
         <p>Ticket is created at: {{ $ticket->created_at->format('d M Y H:i') }}.</p>
         <p>Ticket is updated at: {{ $ticket->updated_at->format('d M Y H:i') }}.</p>

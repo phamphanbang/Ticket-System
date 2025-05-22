@@ -45,7 +45,7 @@ class ClientAdminAssignStaff extends Mailable implements ShouldQueue
     public function content(): Content
     {
         return new Content(
-            view: 'mails.client_admin_assign_staff',
+            view: 'mails.clients.admin_assign_ticket_to_staff',
         );
     }
 
