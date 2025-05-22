@@ -2,7 +2,7 @@
 return [
   'unauthenticated' => 'Invalid or expired token. Please authenticate again.',
   'user_not_found' => 'User not found.',
-  'invalid_credentials' => 'Invalid email or password.',
+  'invalid_credentials' => 'Wrong email or password.',
 
   'model_updated' => ':model updated successfully.',
   'model_created' => ':model created successfully.',
