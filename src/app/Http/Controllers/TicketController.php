@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Constants\TicketStatus;
 use App\Http\Requests\AdminAssignsTicketRequest;
 use App\Http\Requests\AdminCreateTicketRequest;
+use App\Http\Requests\UpdateTicketRequest;
 use App\Http\Resources\TicketResource;
 use App\Services\TicketService;
 use Illuminate\Http\Request;
@@ -42,11 +43,11 @@ class TicketController extends Controller
         );
     }
 
-    public function adminAssignTicket(AdminAssignsTicketRequest $request,$id)
+    public function update(UpdateTicketRequest $request,$id)
     {
         $validated = $request->validated();
 
-        $data = $this->ticketService->adminAssignTicket($validated,$id);
+        $data = $this->ticketService->update($validated,$id);
         return response()->success(
             new TicketResource($data),
             __('messages.ticket_assigned')
@@ -87,4 +88,5 @@ class TicketController extends Controller
             __('messages.model_get_success', ['model' => 'Ticket'])
         );
     }
+
 }

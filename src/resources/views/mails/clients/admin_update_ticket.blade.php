@@ -61,8 +61,12 @@
     <tr>
       <td class="email-body">
         <p>Hello {{ $ticket->client_name }},</p>
-        <p>Your ticket <strong>#{{ $ticket->title }}</strong> has been assigned to: {{ $ticket->assignTo->name }}</p>
-
+        <p>Your ticket <strong>#{{ $ticket->title }}</strong> has been updated</p>
+        @if ($ticket->assign_to)
+        <p>Your ticket has been assigned to: {{ $ticket->assignTo->name }}</p>
+        @else
+        <p>Your ticket has not been assigned to anyone yet.</p>
+        @endif
         <p class="description">Subject: {{ $ticket->description }}</p>
 
         <!--
