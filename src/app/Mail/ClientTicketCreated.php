@@ -44,7 +44,7 @@ class ClientTicketCreated extends Mailable implements ShouldQueue
     public function content(): Content
     {
         return new Content(
-            view: 'mails.client_admin_create_new_ticket',
+            view: 'mails.clients.admin_create_new_ticket',
         );
     }
 

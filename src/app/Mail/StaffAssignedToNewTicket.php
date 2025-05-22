@@ -46,7 +46,7 @@ class StaffAssignedToNewTicket extends Mailable implements ShouldQueue
     public function content(): Content
     {
         return new Content(
-            view: 'mails.staff_assigned_to_new_ticket',
+            view: 'mails.staffs.staff_assigned_to_new_ticket',
         );
     }
 

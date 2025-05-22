@@ -32,7 +32,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 // dd($e);
                 if ($e instanceof AuthenticationException) {
                     return response()->error(
-                        message: __('messages.unauthenticated'),
+                        message: $message,
                         errors: $errors,
                         code: Response::HTTP_UNAUTHORIZED
                     );
