@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Constants\UserRoles;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
@@ -19,21 +20,21 @@ class UserSeeder extends Seeder
             'name' => 'Admin',
             'email' => 'admin@example.com',
             'password' => Hash::make('password'),
-            'role_id' => $adminRole->id,
+            'role' => UserRoles::ADMIN->value,
         ]);
 
         User::create([
             'name' => 'Staff',
             'email' => 'staff@example.com',
             'password' => Hash::make('password'),
-            'role_id' => $staffRole->id,
+            'role' => UserRoles::STAFF->value,
         ]);
 
         User::create([
             'name' => 'phamphanbang',
             'email' => 'phamphanbang@gmail.com',
             'password' => Hash::make('password'),
-            'role_id' => $adminRole->id,
+            'role' => UserRoles::ADMIN->value,
         ]);
     }
 }

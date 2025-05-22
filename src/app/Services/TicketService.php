@@ -22,7 +22,7 @@ class TicketService
     $list = [];
     $query = Ticket::query();
 
-    if ($user->role->role == UserRoles::STAFF->label()) {
+    if ($user->role == UserRoles::STAFF->value) {
       $query = $query->where('assign_to',$user->id);
     }
 
