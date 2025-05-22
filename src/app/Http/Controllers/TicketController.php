@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Constants\TicketStatus;
 use App\Http\Requests\AdminAssignsTicketRequest;
 use App\Http\Requests\AdminCreateTicketRequest;
+use App\Http\Requests\DelayTicketRequest;
 use App\Http\Requests\UpdateTicketRequest;
 use App\Http\Resources\TicketResource;
 use App\Services\TicketService;
@@ -76,6 +77,17 @@ class TicketController extends Controller
         return response()->success(
             new TicketResource($data),
             __('messages.ticket_resolved')
+        );
+    }
+
+    public function staffDelayTicket(DelayTicketRequest $request,$id)
+    {
+        $validated = $request->validated();
+
+        $data = $this->ticketService->staffDelayTicket($validated,$id);
+        return response()->success(
+            new TicketResource($data),
+            __('messages.ticket_delayed')
         );
     }
 

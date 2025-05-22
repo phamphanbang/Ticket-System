@@ -6,6 +6,7 @@ use App\Constants\TicketStatus;
 use App\Constants\UserRoles;
 use App\Exceptions\InvalidTicketAssignmentException;
 use App\Mail\ClientAdminUpdateTicket;
+use App\Mail\ClientStaffDelayTicket;
 use App\Mail\ClientTicketCreated;
 use App\Mail\ClientTicketIsConfirmed;
 use App\Mail\ClientTicketIsResolved;
@@ -125,6 +126,22 @@ class TicketService
 
     Mail::to($ticket->client_email)->queue(new ClientTicketIsResolved($ticket));
 
+    return $ticket;
+  }
+
+  public function staffDelayTicket($data,$id)
+  {
+    $user = auth()->user();
+    $ticket = Ticket::where('id', $id)->first();
+
+    TicketValidator::checkTicketExists($ticket);
+    TicketValidator::checkTicketStatus($ticket, TicketStatus::InProgress->value);
+    TicketValidator::checkStaffIsAssignedToTicket($ticket, $user->id);
+
+    $ticket->update($data);
+
+    Mail::to($ticket->client_email)->queue(new ClientStaffDelayTicket($ticket));
+    
     return $ticket;
   }
 
