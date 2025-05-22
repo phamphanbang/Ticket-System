@@ -53,6 +53,19 @@ class TicketController extends Controller
         );
     }
 
+    public function staffConfirmTicket(Request $request, $id)
+    {
+        // $validated = $request->validated();
+        $validated['status'] = TicketStatus::InProgress;
+
+        $data = $this->ticketService->staffConfirmTicket($validated, $id);
+
+        return response()->success(
+            new TicketResource($data),
+            __('messages.ticket_processed')
+        );
+    }
+
     public function show($id)
     {
         $ticket = $this->ticketService->getTicketById($id);
