@@ -11,11 +11,12 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class ClientAdminAssignStaff extends Mailable implements ShouldQueue
+class StaffUnassignedToTicket extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
 
     public Ticket $ticket;
+
     /**
      * Create a new message instance.
      */
@@ -23,7 +24,6 @@ class ClientAdminAssignStaff extends Mailable implements ShouldQueue
     {
         $this->ticket = $ticket;
     }
-
 
     /**
      * Get the message envelope.
@@ -35,7 +35,7 @@ class ClientAdminAssignStaff extends Mailable implements ShouldQueue
                 address: config('mail.from.address'),
                 name: config('mail.from.name'),
             ),
-            subject: 'Your ticket has been assigned to a staff member',
+            subject: 'You have been unassigned from ticket',
         );
     }
 
@@ -45,7 +45,7 @@ class ClientAdminAssignStaff extends Mailable implements ShouldQueue
     public function content(): Content
     {
         return new Content(
-            view: 'mails.clients.admin_assign_ticket_to_staff',
+            view: 'mails.staffs.staff_unassigned_to_ticket',
         );
     }
 
