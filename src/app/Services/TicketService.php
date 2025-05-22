@@ -58,16 +58,9 @@ class TicketService
   public function adminAssignTicket($data, $id)
   {
     $ticket = Ticket::where('id', $id)->first();
-    if (!$ticket) {
-      throw new ModelNotFoundException(__('messages.model_not_found', ['model' => 'Ticket']));
-    }
-    if ($ticket->status->value != TicketStatus::New->value) {
-      throw new InvalidTicketAssignmentException(__('error.ticket_assigned_not_new'));
-    }
-
-    if ($data['assign_to'] == $ticket->assign_to) {
-      throw new InvalidTicketAssignmentException(__('error.ticket_assigned_same_staff'));
-    }
+    $this->checkTicketExists($ticket);
+    $this->checkTicketStatus($ticket, TicketStatus::New->value);
+    $this->checkTicketNotAssignedToTheSameStaff($ticket, $data['assign_to']);
 
     $ticket->update($data);
 
@@ -89,7 +82,7 @@ class TicketService
 
     $this->checkTicketExists($ticket);
     $this->checkTicketStatus($ticket, TicketStatus::New->value);
-    $this->checkAuthIsAssignedToTicket($ticket, $user);
+    $this->checkAuthIsAssignedToTicket($ticket, $user->id);
 
     $ticket->update($data);
 
@@ -101,23 +94,20 @@ class TicketService
   public function getTicketById($id)
   {
     $ticket = Ticket::find($id);
-    if (!$ticket) {
-      throw new ModelNotFoundException(__('messages.model_not_found', ['model' => 'Ticket']));
-    }
+    $this->checkTicketExists($ticket);
 
     return $ticket->load(['assignTo']);
   }
 
   public function checkTicketExists($ticket)
   {
-    if (!$ticket) {
-      throw new ModelNotFoundException(__('messages.model_not_found', ['model' => 'Ticket']));
-    }
+    if ($ticket) return;
+    throw new ModelNotFoundException(__('messages.model_not_found', ['model' => 'Ticket']));
   }
 
   public function checkTicketStatus($ticket, $status)
   {
-    if ($ticket->status->value == $status) return ;
+    if ($ticket->status->value == $status) return;
     $errorMessage = "";
     switch ($status) {
       case TicketStatus::New->value:
@@ -130,10 +120,15 @@ class TicketService
     throw new InvalidTicketAssignmentException($errorMessage);
   }
 
-  public function checkAuthIsAssignedToTicket($ticket, $user)
+  public function checkAuthIsAssignedToTicket($ticket, $staff_id)
   {
-    if ($ticket->assign_to != $user->id) {
-      throw new InvalidTicketAssignmentException(__('error.ticket_assigned_not_your_ticket'));
-    }
+    if ($ticket->assign_to == $staff_id) return;
+    throw new InvalidTicketAssignmentException(__('error.ticket_assigned_not_your_ticket'));
+  }
+
+  public function checkTicketNotAssignedToTheSameStaff($ticket, $staff_id)
+  {
+    if ($ticket->assign_to != $staff_id) return;
+    throw new InvalidTicketAssignmentException(__('error.ticket_assigned_same_staff'));
   }
 }
