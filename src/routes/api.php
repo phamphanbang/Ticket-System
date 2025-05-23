@@ -21,4 +21,5 @@ Route::middleware('auth:sanctum')->group(function () {
   Route::post('tickets/{ticket}/delay', [TicketController::class, 'staffDelayTicket'])->name('staff.delay.ticket');
   
 });
-Route::post('tickets/{ticket}/reject', [TicketController::class, 'staffDelayTicket'])->name('client.reject.ticket')->middleware('signed');
+Route::post('tickets/{ticket}/reject', [TicketController::class, 'clientRejectTicket'])->name('client.reject.ticket')->middleware('signed');
+Route::post('tickets/{ticket}/close', [TicketController::class, 'clientCloseTicket'])->name('client.close.ticket')->middleware('signed');
