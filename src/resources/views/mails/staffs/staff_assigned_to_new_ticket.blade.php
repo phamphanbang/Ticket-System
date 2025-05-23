@@ -1,80 +1,27 @@
-<!DOCTYPE html>
-<html>
+@extends('mails.layout')
 
-<head>
-  <meta charset="UTF-8">
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background-color: #f4f4f4;
-      padding: 20px;
-    }
 
-    .email-container {
-      max-width: 600px;
-      margin: auto;
-      background-color: #ffffff;
-      border-radius: 6px;
-      overflow: hidden;
-      width: 100%;
-    }
+@section('title')
+<h2>New Ticket Assigned to You</h2>
+@endsection
 
-    .email-header {
-      background-color: #2d3748;
-      color: white;
-      padding: 16px;
-      text-align: center;
-    }
+@section('content')
+<p>Hello {{ $ticket->assignTo->name }},</p>
 
-    .email-header h2 {
-      margin: 0;
-    }
+<p>You have been assigned to a new support ticket: <strong>#{{ $ticket->id }} – "{{ $ticket->title }}"</strong>.</p>
 
-    .email-body {
-      padding: 24px;
-    }
+<p><strong>Client Name:</strong> {{ $ticket->client_name }}</p>
+<p><strong>Client Email:</strong> {{ $ticket->client_email }}</p>
+<p><strong>Status:</strong> {{ $ticket->status->label() }}</p>
+<p><strong>Subject:</strong> {{ $ticket->description }}</p>
 
-    .email-body p {
-      font-size: 16px;
-    }
+<p><strong>Created At:</strong> {{ $ticket->created_at->format('d M Y H:i') }}</p>
+<p><strong>Last Updated:</strong> {{ $ticket->updated_at->format('d M Y H:i') }}</p>
+<p><strong>Deadline:</strong> {{ $ticket->deadline->format('d M Y H:i') }}</p>
 
-    .email-body .description {
-      font-size: 14px;
-      color: #555;
-    }
-
-    .email-footer {
-      margin-top: 30px;
-      font-size: 14px;
-      color: #777;
-    }
-  </style>
-</head>
-
-<body>
-  <table class="email-container" cellpadding="0" cellspacing="0">
-    <tr>
-      <td class="email-header">
-        <h2>You have been assigned to a new ticket</h2>
-      </td>
-    </tr>
-    <tr>
-      <td class="email-body">
-        <p>Hello {{ $ticket->assignTo->name }},</p>
-        <p>You have been assigned to ticket <strong>#{{ $ticket->title }}</strong></p>
-        <p>Client name: {{ $ticket->client_name }}</p>
-        <p>Client email: {{ $ticket->client_email }}</p>
-        <p>Status: {{ $ticket->status->label() }}</p>
-        <p>Subject: {{ $ticket->description }}</p>
-
-        <p>Ticket is created at: {{ $ticket->created_at->format('d M Y H:i') }}.</p>
-        <p>Ticket is updated at: {{ $ticket->updated_at->format('d M Y H:i') }}.</p>
-        <p>Ticket deadline: {{ $ticket->deadline->format('d M Y H:i') }}</p>
-
-        <p class="email-footer">Thank you,<br>Support Team</p>
-      </td>
-    </tr>
-  </table>
-</body>
-
-</html>
+<p>
+  Please review the ticket details and take the appropriate actions.<br>
+  Thank you,<br>
+  <strong>Support Team</strong>
+</p>
+@endsection

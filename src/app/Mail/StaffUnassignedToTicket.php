@@ -3,6 +3,7 @@
 namespace App\Mail;
 
 use App\Models\Ticket;
+use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -16,13 +17,15 @@ class StaffUnassignedToTicket extends Mailable implements ShouldQueue
     use Queueable, SerializesModels;
 
     public Ticket $ticket;
+    public User $oldStaff;
 
     /**
      * Create a new message instance.
      */
-    public function __construct(Ticket $ticket)
+    public function __construct(Ticket $ticket,User $oldStaff)
     {
         $this->ticket = $ticket;
+        $this->oldStaff = $oldStaff;
     }
 
     /**
@@ -46,6 +49,10 @@ class StaffUnassignedToTicket extends Mailable implements ShouldQueue
     {
         return new Content(
             view: 'mails.staffs.staff_unassigned_to_ticket',
+            with: [
+                'ticket' => $this->ticket,
+                'staff' => $this->oldStaff,
+            ],
         );
     }
 

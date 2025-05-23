@@ -1,84 +1,30 @@
-<!DOCTYPE html>
-<html>
+@extends('mails.layout')
 
-<head>
-  <meta charset="UTF-8">
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background-color: #f4f4f4;
-      padding: 20px;
-    }
+@section('title')
+<h2>Your Ticket Has Been Resolved</h2>
+@endsection
 
-    .email-container {
-      max-width: 600px;
-      margin: auto;
-      background-color: #ffffff;
-      border-radius: 6px;
-      overflow: hidden;
-      width: 100%;
-    }
+@section('content')
 
-    .email-header {
-      background-color: #2d3748;
-      color: white;
-      padding: 16px;
-      text-align: center;
-    }
+<p>Hello {{ $ticket->client_name }},</p>
 
-    .email-header h2 {
-      margin: 0;
-    }
+<p>Your ticket <strong>#{{ $ticket->title }}</strong> has been resolved by <strong>{{ $ticket->assignTo->name }}</strong>.</p>
 
-    .email-body {
-      padding: 24px;
-    }
+<p><strong>Subject:</strong> {{ $ticket->description }}</p>
 
-    .email-body p {
-      font-size: 16px;
-    }
+<p>Please confirm the resolution of this ticket using the buttons below. If no action is taken, the ticket will automatically close in 3 days.</p>
 
-    .email-body .description {
-      font-size: 14px;
-      color: #555;
-    }
+<p>
+  <a href="{{ $rejectUrl }}" class="email-button reject-button" target="_blank">Reject</a>
+  <a href="{{ $closeUrl }}" class="email-button close-button" target="_blank">Confirm & Close</a>
+</p>
 
-    .email-footer {
-      margin-top: 30px;
-      font-size: 14px;
-      color: #777;
-    }
-  </style>
-</head>
+<p><strong>Created on:</strong> {{ $ticket->created_at->format('d M Y H:i') }}</p>
+<p><strong>Last updated:</strong> {{ $ticket->updated_at->format('d M Y H:i') }}</p>
+<p><strong>Deadline:</strong> {{ $ticket->deadline->format('d M Y H:i') }}</p>
 
-<body>
-  <table class="email-container" cellpadding="0" cellspacing="0">
-    <tr>
-      <td class="email-header">
-        <h2>Your ticket has been resolved</h2>
-      </td>
-    </tr>
-    <tr>
-      <td class="email-body">
-        <p>Hello {{ $ticket->client_name }},</p>
-        <p>Your ticket <strong>#{{ $ticket->title }}</strong> has been resolved by {{ $ticket->assignTo->name }}</p>
-
-        <p class="description">Subject: {{ $ticket->description }}</p>
-
-        <p>This is your reject link. If you not confirm, the ticket will auto close within 3 days</p>
-        <p><a href="{{ $rejectUrl }}" target="_blank">Reject</a></p>
-
-        <p>This is your close link. If you not confirm, the ticket will auto close within 3 days</p>
-        <p><a href="{{ $closeUrl }}" target="_blank">Reject</a></p>
-
-        <p>Ticket is created at: {{ $ticket->created_at->format('d M Y H:i') }}.</p>
-        <p>Ticket is updated at: {{ $ticket->updated_at->format('d M Y H:i') }}.</p>
-        <p>Ticket deadline: {{ $ticket->deadline->format('d M Y H:i') }}</p>
-
-        <p class="email-footer">Thank you,<br>Support Team</p>
-      </td>
-    </tr>
-  </table>
-</body>
-
-</html>
+<p>Thank you for your patience.<br>
+  Best regards,<br>
+  <strong>Support Team</strong>
+</p>
+@endsection

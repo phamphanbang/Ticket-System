@@ -1,71 +1,21 @@
-<!DOCTYPE html>
-<html>
+@extends('mails.layout')
 
-<head>
-  <meta charset="UTF-8">
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background-color: #f4f4f4;
-      padding: 20px;
-    }
 
-    .email-container {
-      max-width: 600px;
-      margin: auto;
-      background-color: #ffffff;
-      border-radius: 6px;
-      overflow: hidden;
-      width: 100%;
-    }
+@section('title')
+<h2>Your Ticket Has Been Rejected</h2>
+@endsection
 
-    .email-header {
-      background-color: #2d3748;
-      color: white;
-      padding: 16px;
-      text-align: center;
-    }
+@section('content')
+<p>Hello {{ $ticket->assignTo->name }},</p>
 
-    .email-header h2 {
-      margin: 0;
-    }
+<p>The client has rejected the resolution of ticket <strong>#{{ $ticket->id }} – "{{ $ticket->title }}"</strong>.</p>
 
-    .email-body {
-      padding: 24px;
-    }
+<p>Please review the ticket and take the necessary follow-up actions. You may need to communicate further with the client to resolve the issue to their satisfaction.</p>
 
-    .email-body p {
-      font-size: 16px;
-    }
+<p>If you have any questions or need assistance, feel free to reach out to the support manager.</p>
 
-    .email-body .description {
-      font-size: 14px;
-      color: #555;
-    }
-
-    .email-footer {
-      margin-top: 30px;
-      font-size: 14px;
-      color: #777;
-    }
-  </style>
-</head>
-
-<body>
-  <table class="email-container" cellpadding="0" cellspacing="0">
-    <tr>
-      <td class="email-header">
-        <h2>Your ticket has been rejected</h2>
-      </td>
-    </tr>
-    <tr>
-      <td class="email-body">
-        <p>Hello {{ $ticket->assignTo->name }},</p>
-
-        <p class="email-footer">Thank you,<br>Support Team</p>
-      </td>
-    </tr>
-  </table>
-</body>
-
-</html>
+<p>
+  Thank you,<br>
+  <strong>Support Team</strong>
+</p>
+@endsection

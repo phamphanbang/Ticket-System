@@ -78,8 +78,8 @@ class TicketService
 
     $ticket->update($data);
 
-    $oldUser = $oldAssignId ? User::find($oldAssignId) : null;
-    $newUser = $newAssignId ? User::find($newAssignId) : null;
+    $oldUser = $oldAssignId ? User::find($oldAssignId)->first() : null;
+    $newUser = $newAssignId ? User::find($newAssignId)->first() : null;
 
     if (is_null($oldAssignId) && $newUser) {
       Mail::to($newUser->email)
@@ -87,11 +87,11 @@ class TicketService
     }
 
     if ($oldUser && is_null($newAssignId)) {
-      Mail::to($oldUser->email)->queue(new StaffUnassignedToTicket($ticket));
+      Mail::to($oldUser->email)->queue(new StaffUnassignedToTicket($ticket,$oldUser));
     }
     if ($oldUser && $newUser && $oldAssignId !== $newAssignId) {
       Mail::to($newUser->email)->queue(new StaffAssignedToNewTicket($ticket));
-      Mail::to($oldUser->email)->queue(new StaffUnassignedToTicket($ticket));
+      Mail::to($oldUser->email)->queue(new StaffUnassignedToTicket($ticket, $oldUser));
     }
     if ($oldAssignId !== $newAssignId || $oldTitle !== $ticket->title || $oldDescription !== $ticket->description) {
       Mail::to($ticket->client_email)->queue(new ClientAdminUpdateTicket($ticket));

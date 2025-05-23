@@ -7,6 +7,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Exceptions\InvalidSignatureException;
 use Illuminate\Validation\ValidationException;
 use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
 use Symfony\Component\HttpFoundation\Response;
@@ -36,6 +37,14 @@ return Application::configure(basePath: dirname(__DIR__))
                         message: $message,
                         errors: $errors,
                         code: Response::HTTP_UNAUTHORIZED
+                    );
+                }
+
+                if ($e instanceof InvalidSignatureException) {
+                    return response()->error(
+                        message: $message,
+                        errors: $errors,
+                        code: Response::HTTP_FORBIDDEN
                     );
                 }
 
