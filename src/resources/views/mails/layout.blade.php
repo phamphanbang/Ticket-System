@@ -74,12 +74,12 @@
   <table class="email-container" cellpadding="0" cellspacing="0">
     <tr>
       <td class="email-header">
-        @include('title')
+        @yield('title')
       </td>
     </tr>
     <tr>
       <td class="email-body">
-        @include('content')
+        @yield('content')
       </td>
     </tr>
   </table>
