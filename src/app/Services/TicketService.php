@@ -11,6 +11,7 @@ use App\Mail\ClientTicketCreated;
 use App\Mail\ClientTicketIsConfirmed;
 use App\Mail\ClientTicketIsResolved;
 use App\Mail\StaffAssignedToNewTicket;
+use App\Mail\StaffClientRejectTicket;
 use App\Mail\StaffUnassignedToTicket;
 use App\Models\Ticket;
 use App\Models\User;
@@ -142,6 +143,19 @@ class TicketService
 
     Mail::to($ticket->client_email)->queue(new ClientStaffDelayTicket($ticket));
     
+    return $ticket;
+  }
+
+  public function clientRejectTicket($data,$id)
+  {
+    $ticket = Ticket::where('id', $id)->first();
+    TicketValidator::checkTicketExists($ticket);
+    TicketValidator::checkTicketStatus($ticket, TicketStatus::Resolved->value);
+
+    $ticket->update($data);
+
+    Mail::to($ticket->assignTo->email)->queue(new StaffClientRejectTicket($ticket));
+
     return $ticket;
   }
 

@@ -1,5 +1,6 @@
 <?php
 
+use App\Exceptions\InvalidTicketAssignmentException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Application;
@@ -35,6 +36,14 @@ return Application::configure(basePath: dirname(__DIR__))
                         message: $message,
                         errors: $errors,
                         code: Response::HTTP_UNAUTHORIZED
+                    );
+                }
+
+                if ($e instanceof InvalidTicketAssignmentException) {
+                    return response()->error(
+                        message: $message,
+                        errors: $errors,
+                        code: Response::HTTP_BAD_REQUEST
                     );
                 }
 
