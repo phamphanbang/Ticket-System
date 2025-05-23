@@ -27,9 +27,10 @@ class TicketValidator
       case TicketStatus::InProgress->value:
         $errorMessage = __('error.ticket_not_in_progress');
         break;
-
+      case TicketStatus::Resolved->value:
+        $errorMessage = __('error.ticket_not_resolved');
+        break;
       default:
-
         break;
     }
     throw new InvalidTicketAssignmentException($errorMessage);

@@ -9,6 +9,7 @@ use App\Http\Requests\AdminCreateTicketRequest;
 use App\Http\Requests\DelayTicketRequest;
 use App\Http\Requests\UpdateTicketRequest;
 use App\Http\Resources\TicketResource;
+use App\Models\Ticket;
 use App\Services\TicketService;
 use Illuminate\Http\Request;
 
@@ -81,7 +82,7 @@ class TicketController extends Controller
         );
     }
 
-    public function action(ActionTicketRequest $request, $id) 
+    public function action(ActionTicketRequest $request, $id)
     {
         $validated = $request->validated();
 
@@ -95,6 +96,10 @@ class TicketController extends Controller
             case TicketStatus::Resolved->value:
                 $data = $this->ticketService->staffResolveTicket($validated, $id);
                 $message = __('messages.ticket_resolved');
+                break;
+            case TicketStatus::Closed->value:
+                $data = $this->ticketService->closeTicket($validated, $id);
+                $message = __('messages.ticket_closed');
                 break;
             default:
                 $data = null;
@@ -123,12 +128,23 @@ class TicketController extends Controller
         );
     }
 
-    public function clientRejectTicket(Request $request,$id)
+    public function clientRejectTicket(Request $request, $id)
     {
-        $data = $this->ticketService->clientRejectTicket($request->all(), $id);
+        $validated['status'] = TicketStatus::InProgress->value;
+        $data = $this->ticketService->clientRejectTicket($validated, $id);
         return response()->success(
             new TicketResource($data),
             __('messages.ticket_rejected')
+        );
+    }
+
+    public function clientCloseTicket(Request $request, $id)
+    {
+        $validated['status'] = TicketStatus::Closed->value;
+        $data = $this->ticketService->closeTicket($validated, $id);
+        return response()->success(
+            new TicketResource($data),
+            __('messages.ticket_closed')
         );
     }
 

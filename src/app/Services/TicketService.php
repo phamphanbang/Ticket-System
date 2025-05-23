@@ -8,10 +8,12 @@ use App\Exceptions\InvalidTicketAssignmentException;
 use App\Mail\ClientAdminUpdateTicket;
 use App\Mail\ClientStaffDelayTicket;
 use App\Mail\ClientTicketCreated;
+use App\Mail\ClientTicketIsClosed;
 use App\Mail\ClientTicketIsConfirmed;
 use App\Mail\ClientTicketIsResolved;
 use App\Mail\StaffAssignedToNewTicket;
 use App\Mail\StaffClientRejectTicket;
+use App\Mail\StaffTicketIsClosed;
 use App\Mail\StaffUnassignedToTicket;
 use App\Models\Ticket;
 use App\Models\User;
@@ -155,6 +157,29 @@ class TicketService
     $ticket->update($data);
 
     Mail::to($ticket->assignTo->email)->queue(new StaffClientRejectTicket($ticket));
+
+    return $ticket;
+  }
+
+  public function closeTicket($data, $id)
+  {
+    $ticket = Ticket::where('id', $id)->first();
+    $user = auth()->user();
+  
+    TicketValidator::checkTicketExists($ticket);
+    if (!$user) {
+      TicketValidator::checkTicketStatus($ticket, TicketStatus::Resolved->value);
+    }
+    if ($user && $user->isStaff()) {
+      throw new InvalidTicketAssignmentException(__('error.you_are_not_admin'));
+    }
+    $ticket->update($data);
+
+    Mail::to($ticket->assignTo->email)->queue(new StaffTicketIsClosed($ticket));
+
+    if($user) {
+      Mail::to($ticket->client_email)->queue(new ClientTicketIsClosed($ticket));
+    }
 
     return $ticket;
   }

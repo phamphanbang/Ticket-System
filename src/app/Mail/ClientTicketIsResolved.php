@@ -45,8 +45,22 @@ class ClientTicketIsResolved extends Mailable implements ShouldQueue
      */
     public function content(): Content
     {
+        $rejectUrl = $this->parseURL($this->ticket,'client.reject.ticket','/reject-ticket');
+        $closeUrl = $this->parseURL($this->ticket,'client.close.ticket','/close-ticket');
+        return new Content(
+            view: 'mails.clients.staff_resolve_ticket',
+            with: [
+                'ticket' => $this->ticket,
+                'rejectUrl' => $rejectUrl,
+                'closeUrl' => $closeUrl,
+            ],
+        );
+    }
+
+    public function parseURL($ticket,$urlName,$link)
+    {
         $signedURL = URL::temporarySignedRoute(
-            name: 'client.reject.ticket',
+            name: $urlName,
             expiration: now()->addDays(3),
             parameters: [
                 'ticket' => $this->ticket->id,
@@ -55,18 +69,13 @@ class ClientTicketIsResolved extends Mailable implements ShouldQueue
         $parsedUrl = parse_url($signedURL);
         parse_str($parsedUrl['query'], $queryParams);
 
-        $url = env('SESSION_DOMAIN') . "/ticket-action" . '?' . http_build_query([
+        $url = env('SESSION_DOMAIN') . $link . '?' . http_build_query([
             'id' => $this->ticket->id,
             'expires' => $queryParams['expires'],
             'signature' => $queryParams['signature'],
         ]);
-        return new Content(
-            view: 'mails.clients.staff_resolve_ticket',
-            with: [
-                'ticket' => $this->ticket,
-                'url' => $url,
-            ],
-        );
+
+        return $url;
     }
 
     /**
