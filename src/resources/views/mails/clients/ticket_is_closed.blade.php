@@ -1,72 +1,17 @@
-<!DOCTYPE html>
-<html>
+@extends('mails.layout')
 
-<head>
-  <meta charset="UTF-8">
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background-color: #f4f4f4;
-      padding: 20px;
-    }
 
-    .email-container {
-      max-width: 600px;
-      margin: auto;
-      background-color: #ffffff;
-      border-radius: 6px;
-      overflow: hidden;
-      width: 100%;
-    }
+@section('title')
+<h2>Your Ticket Has Been Closed</h2>
+@endsection
 
-    .email-header {
-      background-color: #2d3748;
-      color: white;
-      padding: 16px;
-      text-align: center;
-    }
+@section('content')
+<p>Dear {{ $ticket->client_name }},</p>
 
-    .email-header h2 {
-      margin: 0;
-    }
+<p>We would like to inform you that your support ticket <strong>#{{ $ticket->id }} – "{{ $ticket->title }}"</strong> has been successfully closed.</p>
 
-    .email-body {
-      padding: 24px;
-    }
-
-    .email-body p {
-      font-size: 16px;
-    }
-
-    .email-body .description {
-      font-size: 14px;
-      color: #555;
-    }
-
-    .email-footer {
-      margin-top: 30px;
-      font-size: 14px;
-      color: #777;
-    }
-  </style>
-</head>
-
-<body>
-  <table class="email-container" cellpadding="0" cellspacing="0">
-    <tr>
-      <td class="email-header">
-        <h2>Your Ticket Has Been closed</h2>
-      </td>
-    </tr>
-    <tr>
-      <td class="email-body">
-        <p>Dear {{ $ticket->client_name }},</p>
-        <p>We wanted to inform you (Ticket #{{ $ticket->id }} – "{{ $ticket->title }}") has been closed.</p>
-
-        <p>Thank you for your understanding.<br>Support Team</p>
-      </td>
-    </tr>
-  </table>
-</body>
-
-</html>
+<p>Thank you for your patience.<br>
+  Best regards,<br>
+  <strong>Support Team</strong>
+</p>
+@endsection
