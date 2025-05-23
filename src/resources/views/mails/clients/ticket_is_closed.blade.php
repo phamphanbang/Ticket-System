@@ -55,27 +55,15 @@
   <table class="email-container" cellpadding="0" cellspacing="0">
     <tr>
       <td class="email-header">
-        <h2>Your ticket has been resolved</h2>
+        <h2>Your Ticket Has Been closed</h2>
       </td>
     </tr>
     <tr>
       <td class="email-body">
-        <p>Hello {{ $ticket->client_name }},</p>
-        <p>Your ticket <strong>#{{ $ticket->title }}</strong> has been resolved by {{ $ticket->assignTo->name }}</p>
+        <p>Dear {{ $ticket->client_name }},</p>
+        <p>We wanted to inform you (Ticket #{{ $ticket->id }} – "{{ $ticket->title }}") has been closed.</p>
 
-        <p class="description">Subject: {{ $ticket->description }}</p>
-
-        <p>This is your reject link. If you not confirm, the ticket will auto close within 3 days</p>
-        <p><a href="{{ $rejectUrl }}" target="_blank">Reject</a></p>
-
-        <p>This is your close link. If you not confirm, the ticket will auto close within 3 days</p>
-        <p><a href="{{ $closeUrl }}" target="_blank">Reject</a></p>
-
-        <p>Ticket is created at: {{ $ticket->created_at->format('d M Y H:i') }}.</p>
-        <p>Ticket is updated at: {{ $ticket->updated_at->format('d M Y H:i') }}.</p>
-        <p>Ticket deadline: {{ $ticket->deadline->format('d M Y H:i') }}</p>
-
-        <p class="email-footer">Thank you,<br>Support Team</p>
+        <p>Thank you for your understanding.<br>Support Team</p>
       </td>
     </tr>
   </table>
