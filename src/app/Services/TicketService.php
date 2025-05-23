@@ -71,7 +71,7 @@ class TicketService
     $oldTitle = $ticket->title;
     $oldDescription = $ticket->description;
     $oldAssignId = $ticket->assign_to;
-    $newAssignId = $data['assign_to'];
+    $newAssignId = $data['assign_to'] ?? null;
 
     $ticket->update($data);
 

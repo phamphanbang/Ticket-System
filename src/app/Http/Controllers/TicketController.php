@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Constants\TicketStatus;
+use App\Http\Requests\ActionTicketRequest;
 use App\Http\Requests\AdminAssignsTicketRequest;
 use App\Http\Requests\AdminCreateTicketRequest;
 use App\Http\Requests\DelayTicketRequest;
@@ -44,11 +45,11 @@ class TicketController extends Controller
         );
     }
 
-    public function update(UpdateTicketRequest $request,$id)
+    public function update(UpdateTicketRequest $request, $id)
     {
         $validated = $request->validated();
 
-        $data = $this->ticketService->update($validated,$id);
+        $data = $this->ticketService->update($validated, $id);
         return response()->success(
             new TicketResource($data),
             __('messages.ticket_assigned')
@@ -80,11 +81,42 @@ class TicketController extends Controller
         );
     }
 
-    public function staffDelayTicket(DelayTicketRequest $request,$id)
+    public function action(ActionTicketRequest $request, $id) 
     {
         $validated = $request->validated();
 
-        $data = $this->ticketService->staffDelayTicket($validated,$id);
+        $newStatus = (int) $validated['status'];
+
+        switch ($newStatus) {
+            case TicketStatus::InProgress->value:
+                $data = $this->ticketService->staffConfirmTicket($validated, $id);
+                $message = __('messages.ticket_confirmed');
+                break;
+            case TicketStatus::Resolved->value:
+                $data = $this->ticketService->staffResolveTicket($validated, $id);
+                $message = __('messages.ticket_resolved');
+                break;
+            default:
+                $data = null;
+                $message = __('messages.invalid_ticket_status');
+                return response()->error(
+                    $message,
+                    [],
+                    400
+                );
+        }
+
+        return response()->success(
+            new TicketResource($data),
+            $message
+        );
+    }
+
+    public function staffDelayTicket(DelayTicketRequest $request, $id)
+    {
+        $validated = $request->validated();
+
+        $data = $this->ticketService->staffDelayTicket($validated, $id);
         return response()->success(
             new TicketResource($data),
             __('messages.ticket_delayed')
@@ -100,5 +132,4 @@ class TicketController extends Controller
             __('messages.model_get_success', ['model' => 'Ticket'])
         );
     }
-
 }

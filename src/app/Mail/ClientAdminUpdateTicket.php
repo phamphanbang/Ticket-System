@@ -35,7 +35,7 @@ class ClientAdminUpdateTicket extends Mailable implements ShouldQueue
                 address: config('mail.from.address'),
                 name: config('mail.from.name'),
             ),
-            subject: 'Your ticket has been assigned to a staff member',
+            subject: 'Your ticket has been updated',
         );
     }
 

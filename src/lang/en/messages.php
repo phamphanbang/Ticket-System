@@ -3,6 +3,7 @@ return [
   'unauthenticated' => 'Invalid or expired token. Please authenticate again.',
   'user_not_found' => 'User not found.',
   'invalid_credentials' => 'Wrong email or password.',
+  'invalid_ticket_status' => 'Invalid ticket status.',
 
   'model_updated' => ':model updated successfully.',
   'model_created' => ':model created successfully.',
@@ -12,4 +13,6 @@ return [
   'model_list' => 'Get :model list successfully.',
 
   'ticket_assigned' => 'Ticket assigned successfully.',
+  'ticket_confirmed' => 'Ticket confirmed successfully.',
+  'ticket_resolved' => 'Ticket resolved successfully.',
 ];
