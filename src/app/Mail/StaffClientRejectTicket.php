@@ -6,17 +6,17 @@ use App\Models\Ticket;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
-use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailables\Content;
+use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\URL;
 
-class ClientTicketIsResolved extends Mailable implements ShouldQueue
+class StaffClientRejectTicket extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
 
     public Ticket $ticket;
+
     /**
      * Create a new message instance.
      */
@@ -24,7 +24,6 @@ class ClientTicketIsResolved extends Mailable implements ShouldQueue
     {
         $this->ticket = $ticket;
     }
-
 
     /**
      * Get the message envelope.
@@ -36,7 +35,7 @@ class ClientTicketIsResolved extends Mailable implements ShouldQueue
                 address: config('mail.from.address'),
                 name: config('mail.from.name'),
             ),
-            subject: 'Your ticket has been resolved',
+            subject: 'Your resolved ticket has been rejected',
         );
     }
 
@@ -45,27 +44,8 @@ class ClientTicketIsResolved extends Mailable implements ShouldQueue
      */
     public function content(): Content
     {
-        $signedURL = URL::temporarySignedRoute(
-            name: 'client.reject.ticket',
-            expiration: now()->addDays(3),
-            parameters: [
-                'ticket' => $this->ticket->id,
-            ]
-        );
-        $parsedUrl = parse_url($signedURL);
-        parse_str($parsedUrl['query'], $queryParams);
-
-        $url = env('SESSION_DOMAIN') . "/ticket-action" . '?' . http_build_query([
-            'id' => $this->ticket->id,
-            'expires' => $queryParams['expires'],
-            'signature' => $queryParams['signature'],
-        ]);
         return new Content(
-            view: 'mails.clients.staff_resolve_ticket',
-            with: [
-                'ticket' => $this->ticket,
-                'url' => $url,
-            ],
+            view: 'mails.staffs.client_reject_ticket',
         );
     }
 

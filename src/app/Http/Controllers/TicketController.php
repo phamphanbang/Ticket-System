@@ -123,6 +123,15 @@ class TicketController extends Controller
         );
     }
 
+    public function clientRejectTicket(Request $request,$id)
+    {
+        $data = $this->ticketService->clientRejectTicket($request->all(), $id);
+        return response()->success(
+            new TicketResource($data),
+            __('messages.ticket_rejected')
+        );
+    }
+
     public function show($id)
     {
         $ticket = $this->ticketService->getTicketById($id);
