@@ -6,6 +6,7 @@ services:
     container_name: ticket_app
     volumes:
       - ./src:/var/www
+      - ./docker/laravel/laravel-cron:/etc/cron.d/laravel-cron:ro
     ports:
       - "8000:9000"
     depends_on:

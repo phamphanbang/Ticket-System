@@ -25,13 +25,16 @@ return Application::configure(basePath: dirname(__DIR__))
             EnsureFrontendRequestsAreStateful::class
         ]);
     })
+    ->withCommands([
+        \App\Console\Commands\FetchClientMails::class,
+    ])
     ->withExceptions(function (Exceptions $exceptions) {
         $exceptions->render(
             function (Exception $e, Request $request) {
                 $message = $e->getMessage();
                 $code = $e->getCode() != 0 ? Response::HTTP_INTERNAL_SERVER_ERROR : $e->getCode();
                 $errors = null;
-                dd($e);
+                // dd($e);
                 if ($e instanceof AuthenticationException) {
                     return response()->error(
                         message: $message,

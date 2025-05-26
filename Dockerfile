@@ -1,7 +1,7 @@
 FROM php:8.3-fpm
 
 RUN apt-get update && apt-get install -y \
-    git curl zip unzip libonig-dev libxml2-dev libzip-dev libpng-dev \
+    git curl zip unzip libonig-dev libxml2-dev libzip-dev libpng-dev cron procps \
     && docker-php-ext-install pdo_mysql zip
 
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
@@ -19,6 +19,18 @@ RUN composer install
 RUN chown -R www-data:www-data /var/www \
     && chmod -R 755 /var/www/storage
 
+COPY ./docker/laravel/laravel-cron /etc/laravel-cron
+
+RUN chmod 0644 /etc/laravel-cron
+
+RUN crontab /etc/laravel-cron
+
+RUN touch /var/log/cron.log
+
+COPY docker/start-container.sh /start-container.sh
+RUN chmod +x /start-container.sh
+
 EXPOSE 9000
-CMD ["php-fpm"]
+
+CMD ["/start-container.sh"]
 

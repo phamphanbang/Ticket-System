@@ -7,6 +7,7 @@ use App\Models\Ticket;
 use Illuminate\Console\Command;
 use Webklex\IMAP\Facades\Client;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
 
 class FetchClientMails extends Command
 {
@@ -59,5 +60,8 @@ class FetchClientMails extends Command
         }
 
         $client->disconnect();
+        Log::info('YourCommand is running at ' . now());
+
+        $this->info('Emails fetched successfully.');
     }
 }
