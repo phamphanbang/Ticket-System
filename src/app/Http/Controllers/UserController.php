@@ -23,7 +23,6 @@ class UserController extends Controller
         );
     }
 
-    // Show a single user
     public function show($id)
     {
         $data = $this->userService->getUserById(($id));

@@ -17,18 +17,12 @@ class ClientTicketIsResolved extends Mailable implements ShouldQueue
     use Queueable, SerializesModels;
 
     public Ticket $ticket;
-    /**
-     * Create a new message instance.
-     */
+
     public function __construct(Ticket $ticket)
     {
         $this->ticket = $ticket;
     }
 
-
-    /**
-     * Get the message envelope.
-     */
     public function envelope(): Envelope
     {
         return new Envelope(
@@ -40,9 +34,6 @@ class ClientTicketIsResolved extends Mailable implements ShouldQueue
         );
     }
 
-    /**
-     * Get the message content definition.
-     */
     public function content(): Content
     {
         $rejectUrl = $this->parseURL($this->ticket,'client.reject.ticket','/reject-ticket');
@@ -78,11 +69,6 @@ class ClientTicketIsResolved extends Mailable implements ShouldQueue
         return $url;
     }
 
-    /**
-     * Get the attachments for the message.
-     *
-     * @return array<int, \Illuminate\Mail\Mailables\Attachment>
-     */
     public function attachments(): array
     {
         return [];
