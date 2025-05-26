@@ -33,6 +33,36 @@ class TicketService
       $query = $query->where('assign_to', $user->id);
     }
 
+    if ($request->filled('search')) {
+      $searchTerm = $request->input('search');
+      $query->where(function ($q) use ($searchTerm) {
+        $q->where('title', 'like', "%{$searchTerm}%")
+          ->orWhere('description', 'like', "%{$searchTerm}%");
+      });
+    }
+
+    if ($request->filled('client_email')) {
+        $clientEmail = $request->input('client_email');
+        $query->where('client_email', 'like', "%{$clientEmail}%");
+    }
+
+    if ($request->filled('staff_id')) {
+        $staffId = $request->input('staff_id');
+        $query->where('assign_to', 'like', $staffId);
+    }
+
+    if ($request->filled('priority')) {
+        $staffId = $request->input('priority');
+        $query->where('priority', 'like', $staffId);
+    }
+
+    if ($request->filled('deadline_from')) {
+        $query->whereDate('deadline', '>=', $request->input('deadline_from'));
+    }
+    if ($request->filled('deadline_to')) {
+        $query->whereDate('deadline', '<=', $request->input('deadline_to'));
+    }
+
     $statusList = TicketStatus::list();
 
     foreach ($statusList as $status) {
@@ -87,7 +117,7 @@ class TicketService
     }
 
     if ($oldUser && is_null($newAssignId)) {
-      Mail::to($oldUser->email)->queue(new StaffUnassignedToTicket($ticket,$oldUser));
+      Mail::to($oldUser->email)->queue(new StaffUnassignedToTicket($ticket, $oldUser));
     }
     if ($oldUser && $newUser && $oldAssignId !== $newAssignId) {
       Mail::to($newUser->email)->queue(new StaffAssignedToNewTicket($ticket));
@@ -132,7 +162,7 @@ class TicketService
     return $ticket;
   }
 
-  public function staffDelayTicket($data,$id)
+  public function staffDelayTicket($data, $id)
   {
     $user = auth()->user();
     $ticket = Ticket::where('id', $id)->first();
@@ -144,11 +174,11 @@ class TicketService
     $ticket->update($data);
 
     Mail::to($ticket->client_email)->queue(new ClientStaffDelayTicket($ticket));
-    
+
     return $ticket;
   }
 
-  public function clientRejectTicket($data,$id)
+  public function clientRejectTicket($data, $id)
   {
     $ticket = Ticket::where('id', $id)->first();
     TicketValidator::checkTicketExists($ticket);
@@ -165,7 +195,7 @@ class TicketService
   {
     $ticket = Ticket::where('id', $id)->first();
     $user = auth()->user();
-  
+
     TicketValidator::checkTicketExists($ticket);
     if (!$user) {
       TicketValidator::checkTicketStatus($ticket, TicketStatus::Resolved->value);
@@ -177,7 +207,7 @@ class TicketService
 
     Mail::to($ticket->assignTo->email)->queue(new StaffTicketIsClosed($ticket));
 
-    if($user) {
+    if ($user) {
       Mail::to($ticket->client_email)->queue(new ClientTicketIsClosed($ticket));
     }
 
