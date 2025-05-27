@@ -13,6 +13,21 @@ services:
     networks:
       - ticket_network
 
+  cron:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ticket_cron
+    command: ["sh", "-c", "crontab /etc/laravel-cron && cron && tail -f /var/log/cron.log"]
+    volumes:
+      - ./src:/var/www
+      - ./docker/laravel/laravel-cron:/etc/laravel-cron:ro
+      - ./logs/cron.log:/var/log/cron.log
+    depends_on:
+      - app
+    networks:
+      - ticket_network
+
   nginx:
     image: nginx:stable-alpine
     container_name: ticket_nginx

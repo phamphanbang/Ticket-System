@@ -25,6 +25,9 @@ return Application::configure(basePath: dirname(__DIR__))
             EnsureFrontendRequestsAreStateful::class
         ]);
     })
+    ->withCommands([
+        \App\Console\Commands\FetchClientMails::class,
+    ])
     ->withExceptions(function (Exceptions $exceptions) {
         $exceptions->render(
             function (Exception $e, Request $request) {

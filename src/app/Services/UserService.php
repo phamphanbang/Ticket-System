@@ -72,14 +72,10 @@ class UserService
 
   public function createUser($request)
   {
-    $role = Role::where('role', $request['role'])->first();
-    if (!$role) {
-      throw new ModelNotFoundException(__('messages.model_not_found', ['model' => 'Role']));
-    }
     $user = User::create([
       'name' => $request['name'],
       'email' => $request['email'],
-      'role' => $role,
+      'role' => $request['role'],
       'password' => Hash::make($request['password']),
     ]);
     return $user;
