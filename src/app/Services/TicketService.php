@@ -15,6 +15,7 @@ use App\Mail\StaffAssignedToNewTicket;
 use App\Mail\StaffClientRejectTicket;
 use App\Mail\StaffTicketIsClosed;
 use App\Mail\StaffUnassignedToTicket;
+use App\Models\Client;
 use App\Models\Ticket;
 use App\Models\User;
 use App\Validators\TicketValidator;
@@ -23,6 +24,11 @@ use Illuminate\Support\Facades\Mail;
 
 class TicketService
 {
+  public function __construct(public ClientService $clientService)
+  {
+    // Constructor to inject ClientService dependency
+
+  }
   public function getListTicket($request)
   {
     $user = auth()->user();
@@ -41,26 +47,26 @@ class TicketService
       });
     }
 
-    if ($request->filled('client_email')) {
-        $clientEmail = $request->input('client_email');
-        $query->where('client_email', 'like', "%{$clientEmail}%");
-    }
+    // if ($request->filled('client_email')) {
+    //   $clientEmail = $request->input('client_email');
+    //   $query->where('client_email', 'like', "%{$clientEmail}%");
+    // }
 
     if ($request->filled('staff_id')) {
-        $staffId = $request->input('staff_id');
-        $query->where('assign_to', 'like', $staffId);
+      $staffId = $request->input('staff_id');
+      $query->where('assign_to', 'like', $staffId);
     }
 
     if ($request->filled('priority')) {
-        $staffId = $request->input('priority');
-        $query->where('priority', 'like', $staffId);
+      $staffId = $request->input('priority');
+      $query->where('priority', 'like', $staffId);
     }
 
     if ($request->filled('deadline_from')) {
-        $query->whereDate('deadline', '>=', $request->input('deadline_from'));
+      $query->whereDate('deadline', '>=', $request->input('deadline_from'));
     }
     if ($request->filled('deadline_to')) {
-        $query->whereDate('deadline', '<=', $request->input('deadline_to'));
+      $query->whereDate('deadline', '<=', $request->input('deadline_to'));
     }
 
     $statusList = TicketStatus::list();
@@ -77,18 +83,24 @@ class TicketService
   {
     $ticket = Ticket::create($data);
 
-    return $ticket->load(['assignTo', 'assignTo.role']);
+    return $ticket->load(['assignTo', 'assignTo.role', 'client']);
   }
 
-  public function adminCreateTicket($data)
+  public function adminCreateTicket(array $data)
   {
+    $client = $this->clientService->createClient([
+      'client_name' => $data['client_name'],
+      'client_email' => $data['client_email']
+    ]);
+    $data['client_id'] = $client->id;
+
     $ticket = $this->createTicket($data);
     if ($ticket->assign_to) {
       Mail::to($ticket->assignTo->email)
         ->queue(new StaffAssignedToNewTicket($ticket));
     }
 
-    Mail::to($ticket->client_email)
+    Mail::to($ticket->client->email)
       ->queue(new ClientTicketCreated($ticket));
 
     return $ticket;
@@ -124,7 +136,7 @@ class TicketService
       Mail::to($oldUser->email)->queue(new StaffUnassignedToTicket($ticket, $oldUser));
     }
     if ($oldAssignId !== $newAssignId || $oldTitle !== $ticket->title || $oldDescription !== $ticket->description) {
-      Mail::to($ticket->client_email)->queue(new ClientAdminUpdateTicket($ticket));
+      Mail::to($ticket->client->email)->queue(new ClientAdminUpdateTicket($ticket));
     }
 
     return $ticket;
@@ -141,7 +153,7 @@ class TicketService
 
     $ticket->update($data);
 
-    Mail::to($ticket->client_email)->queue(new ClientTicketIsConfirmed($ticket));
+    Mail::to($ticket->client->email)->queue(new ClientTicketIsConfirmed($ticket));
 
     return $ticket;
   }
@@ -157,7 +169,7 @@ class TicketService
 
     $ticket->update($data);
 
-    Mail::to($ticket->client_email)->queue(new ClientTicketIsResolved($ticket));
+    Mail::to($ticket->client->email)->queue(new ClientTicketIsResolved($ticket));
 
     return $ticket;
   }
@@ -173,7 +185,7 @@ class TicketService
 
     $ticket->update($data);
 
-    Mail::to($ticket->client_email)->queue(new ClientStaffDelayTicket($ticket));
+    Mail::to($ticket->client->email)->queue(new ClientStaffDelayTicket($ticket));
 
     return $ticket;
   }
@@ -208,7 +220,7 @@ class TicketService
     Mail::to($ticket->assignTo->email)->queue(new StaffTicketIsClosed($ticket));
 
     if ($user) {
-      Mail::to($ticket->client_email)->queue(new ClientTicketIsClosed($ticket));
+      Mail::to($ticket->client->email)->queue(new ClientTicketIsClosed($ticket));
     }
 
     return $ticket;

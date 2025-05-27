@@ -10,8 +10,8 @@
 
 <p>You have been assigned to a new support ticket: <strong>#{{ $ticket->id }} – "{{ $ticket->title }}"</strong>.</p>
 
-<p><strong>Client Name:</strong> {{ $ticket->client_name }}</p>
-<p><strong>Client Email:</strong> {{ $ticket->client_email }}</p>
+<p><strong>Client Name:</strong> {{ $ticket->client->name }}</p>
+<p><strong>Client Email:</strong> {{ $ticket->client->email }}</p>
 <p><strong>Status:</strong> {{ $ticket->status->label() }}</p>
 <p><strong>Subject:</strong> {{ $ticket->description }}</p>
 

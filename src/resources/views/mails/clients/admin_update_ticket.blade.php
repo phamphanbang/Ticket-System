@@ -6,7 +6,7 @@
 @endsection
 
 @section('content')
-<p>Dear {{ $ticket->client_name }},</p>
+<p>Dear {{ $ticket->client->name }},</p>
 
 <p>We wanted to let you know that your ticket <strong>#{{ $ticket->title }}</strong> has been updated.</p>
 
