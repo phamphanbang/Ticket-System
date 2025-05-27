@@ -45,48 +45,30 @@ class FetchClientMails extends Command
         $messages = $IMAP_client->getFolder('INBOX')->messages()->since($oneHourAgo)->unseen()->get();
 
         foreach ($messages as $message) {
-            $from = $message->getFrom()[0];
-            $messageId = $message->getMessageId();
-            $in_reply_to = $message->getInReplyTo();
-            $references = $message->getReferences() ?? [];
-            dump($references);
-            $raw_email = $message->getRawContent();
-            $client_email = $from->mail;
-            $client_name = $from->personal ?: 'Unknown Client';
-            $subject = $message->getSubject();
-            $htmlBody = $message->getHTMLBody();
-            $body = $message->getTextBody() ?: strip_tags($htmlBody);
-            $parse_email = $message->getTextBody() ?: strip_tags($htmlBody);
+            $data = $this->ticketMailService->processIMAPEmail($message);
 
             $ticket_client = $this->clientService->createClient([
-                'name' => $client_name,
-                'email' => $client_email,
+                'name' => $data['from_name'],
+                'email' => $data['from_email'],
             ]);
 
             $ticket = Ticket::create([
-                'title' => $subject,
-                'description' => $body,
+                'title' => $data['subject'],
+                'description' => $data['body'],
                 'client' => $ticket_client->id,
                 'status' => TicketStatus::New->value,
                 'deadline' => now()->addDays(7),
             ]);
 
             $mail = $this->ticketMailService->createTicketMail([
+                ...$data,
                 'ticket_id' => $ticket->id,
-                'message_id' => $messageId,
-                'from_email' => $client_email,
-                'from_name' => $client_name,
-                'in_reply_to' => $in_reply_to,
-                'subject' => $subject,
-                'raw_email' => $raw_email,
-                'parse_email' => $parse_email,
-                'references' => $references,
             ]);
 
             $ticket->created_mail_id = $mail->id;
             $ticket->save();
 
-            $this->info("Ticket created for $client_name <$client_email>");
+            $this->info("Ticket created for $ticket_client->name <$ticket_client->email> with ID: $ticket->id");
 
             $message->setFlag('Seen');
         }

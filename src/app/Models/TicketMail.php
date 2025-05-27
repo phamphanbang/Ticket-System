@@ -29,4 +29,9 @@ class TicketMail extends Model
     {
         return $this->hasOne(Comment::class,'mail_id','id');
     }
+
+    public function ticket()
+    {
+        return $this->belongsTo(Ticket::class, 'ticket_id', 'id');
+    }
 }
