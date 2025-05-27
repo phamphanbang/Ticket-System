@@ -23,14 +23,7 @@ COPY ./docker/laravel/laravel-cron /etc/laravel-cron
 
 RUN chmod 0644 /etc/laravel-cron
 
-RUN crontab /etc/laravel-cron
-
-RUN touch /var/log/cron.log
-
-COPY docker/start-container.sh /start-container.sh
-RUN chmod +x /start-container.sh
-
 EXPOSE 9000
 
-CMD ["/start-container.sh"]
+CMD ["php-fpm"]
 
