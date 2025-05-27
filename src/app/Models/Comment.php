@@ -11,23 +11,18 @@ class Comment extends Model
     protected $fillable = [
         'ticket_id',
         'user_id',
+        'user_type',
         'body',
-        'message_id',
-        'in_reply_to',
-        'references',
-        'client_name',
-        'client_email',
     ];
     
     public function user()
     {
-        return $this->belongsTo(User::class);
+        return $this->morphTo(__FUNCTION__,'user_type','user_id');
     }
 
     public function ticket()
     {
         return $this->belongsTo(Ticket::class);
     }
-
 
 }

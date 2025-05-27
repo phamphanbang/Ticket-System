@@ -6,7 +6,7 @@
 
 @section('content')
 
-<p>Hello {{ $ticket->client_name }},</p>
+<p>Hello {{ $ticket->client->name }},</p>
 
 <p>Your ticket <strong>#{{ $ticket->title }}</strong> has been resolved by <strong>{{ $ticket->assignTo->name }}</strong>.</p>
 

@@ -150,10 +150,10 @@ class TicketController extends Controller
 
     public function show($id)
     {
-        $ticket = $this->ticketService->getTicketById($id);
+        $data = $this->ticketService->getTicketById($id);
 
         return response()->success(
-            $ticket,
+            new TicketResource($data),
             __('messages.model_get_success', ['model' => 'Ticket'])
         );
     }

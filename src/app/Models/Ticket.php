@@ -13,12 +13,11 @@ class Ticket extends Model
         'title',
         'description',
         'assign_to',
-        'client_name',
-        'client_email',
         'priority',
         'deadline',
         'status',
-        'message_id',
+        'client_id',
+        'created_mail_id'
     ];
 
     protected $casts = [
@@ -27,6 +26,16 @@ class Ticket extends Model
         'updated_at' => 'datetime',
         'deadline' => 'datetime',
     ];
+
+    public function client()
+    {
+        return $this->belongsTo(Client::class);
+    }
+
+    public function createdMail()
+    {
+        return $this->belongsTo(TicketMail::class, 'created_mail_id');
+    }
 
     public function assignTo()
     {

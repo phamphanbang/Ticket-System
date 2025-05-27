@@ -6,7 +6,7 @@
 @endsection
 
 @section('content')
-<p>Dear {{ $ticket->client_name }},</p>
+<p>Dear {{ $ticket->client->name }},</p>
 <p>We're writing to confirm that your ticket <strong>#{{ $ticket->title }}</strong> has been received and is now being handled by <strong>{{ $ticket->assignTo->name }}</strong>.</p>
 
 <p><strong>Details of your request:</strong></p>
