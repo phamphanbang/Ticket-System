@@ -15,6 +15,9 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->foreignUuid('ticket_id')->constrained('tickets', 'id')->cascadeOnDelete();
             $table->string('message_id');
+            $table->string('subject')->nullable();
+            $table->string('from_email')->nullable();
+            $table->string('from_name')->nullable();
             $table->longText('raw_email');
             $table->longText('parse_email');
             $table->string('in_reply_to')->nullable();

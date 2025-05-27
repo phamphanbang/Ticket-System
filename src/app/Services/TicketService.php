@@ -88,10 +88,11 @@ class TicketService
 
   public function adminCreateTicket(array $data)
   {
-    $client = $this->clientService->createClient([
-      'client_name' => $data['client_name'],
-      'client_email' => $data['client_email']
-    ]);
+    $client_data = [
+      'name' => $data['client_name'],
+      'email' => $data['client_email']
+    ];
+    $client = $this->clientService->createClient($client_data);
     $data['client_id'] = $client->id;
 
     $ticket = $this->createTicket($data);
@@ -231,6 +232,6 @@ class TicketService
     $ticket = Ticket::find($id);
     TicketValidator::checkTicketExists($ticket);
 
-    return $ticket->load(['assignTo']);
+    return $ticket->load(['assignTo','client']);
   }
 }
