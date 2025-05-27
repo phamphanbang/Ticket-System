@@ -10,9 +10,10 @@ class TicketMailService
   public function processIMAPEmail(Message $message)
   {
     $from = $message->getFrom()[0];
+    // dump('message',$message->getInReplyTo()->get());
     $data['message_id'] = $message->getMessageId();
-    $data['in_reply_to'] = $message->getInReplyTo();
-    $data['references'] = $message->getReferences() ?? [];
+    $data['in_reply_to'] = $message->getInReplyTo()->get();
+    $data['references'] = $message->getReferences()->get() ?? [];
     $data['raw_email'] = $message->getRawContent();
     $data['from_email'] = $from->mail;
     $data['from_name'] = $from->personal ?: 'Unknown Client';
@@ -27,5 +28,10 @@ class TicketMailService
     $mail = TicketMail::create($data);
 
     return $mail;
+  }
+
+  public function findByMessageId($messageId)
+  {
+    return TicketMail::where('message_id', $messageId)->first();
   }
 }

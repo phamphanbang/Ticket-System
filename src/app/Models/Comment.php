@@ -12,6 +12,7 @@ class Comment extends Model
         'ticket_id',
         'user_id',
         'user_type',
+        'mail_id',
         'body',
     ];
     

@@ -24,7 +24,10 @@ use Illuminate\Support\Facades\Mail;
 
 class TicketService
 {
-  public function __construct(public ClientService $clientService)
+  public function __construct(
+    protected ClientService $clientService,
+    protected TicketMailService $ticketMailService
+    )
   {
     // Constructor to inject ClientService dependency
 
@@ -232,6 +235,27 @@ class TicketService
     $ticket = Ticket::find($id);
     TicketValidator::checkTicketExists($ticket);
 
-    return $ticket->load(['assignTo','client']);
+    return $ticket->load(['assignTo', 'client']);
+  }
+
+  public function createTicketFromMail($data, Client $ticket_client)
+  {
+    $ticket = Ticket::create([
+      'title' => $data['subject'],
+      'description' => $data['body'],
+      'client_id' => $ticket_client->id,
+      'status' => TicketStatus::New->value,
+      'deadline' => now()->addDays(7),
+    ]);
+
+    $mail = $this->ticketMailService->createTicketMail([
+      ...$data,
+      'ticket_id' => $ticket->id,
+    ]);
+
+    $ticket->created_mail_id = $mail->id;
+    $ticket->save();
+
+    return $ticket->load(['assignTo', 'client']);
   }
 }
