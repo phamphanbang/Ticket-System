@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Constants\PaginateConstant;
 use App\Constants\TicketStatus;
 use App\Constants\UserRoles;
 use App\Exceptions\InvalidTicketAssignmentException;
@@ -27,8 +28,7 @@ class TicketService
   public function __construct(
     protected ClientService $clientService,
     protected TicketMailService $ticketMailService
-    )
-  {
+  ) {
     // Constructor to inject ClientService dependency
 
   }
@@ -72,11 +72,29 @@ class TicketService
       $query->whereDate('deadline', '<=', $request->input('deadline_to'));
     }
 
-    $statusList = TicketStatus::list();
+    if ($request->filled('created_from')) {
+      $query->whereDate('created_at', '>=', $request->input('created_from'));
+    }
+    if ($request->filled('created_to')) {
+      $query->whereDate('created_at', '<=', $request->input('created_to'));
+    }
 
-    foreach ($statusList as $status) {
-      $tempQuery = (clone $query)->where('status', $status->value);
-      $list[$status->column_label()] = $tempQuery->get();
+    if ($request->filled('status') && is_array($request->input('status'))) {
+      $statuses = $request->input('status');
+      $query->whereIn('status', $statuses);
+    }
+
+    if ($request->filled('is_column') && $request->boolean('is_column') == true) {
+
+      $perPage = $request->input('perPage', PaginateConstant::DEFAULT_PER_PAGE->value);
+      $list = $query->limit($perPage)->get();
+    } else {
+      $statusList = TicketStatus::list();
+
+      foreach ($statusList as $status) {
+        $tempQuery = (clone $query)->where('status', $status->value);
+        $list[$status->column_label()] = $tempQuery->get();
+      }
     }
 
     return $list;
