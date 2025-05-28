@@ -26,4 +26,9 @@ class Comment extends Model
         return $this->belongsTo(Ticket::class);
     }
 
+    public function mail()
+    {
+        return $this->belongsTo(TicketMail::class, 'mail_id');
+    }
+
 }
