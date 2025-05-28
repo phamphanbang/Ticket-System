@@ -56,13 +56,13 @@ class TicketService
     // }
 
     if ($request->filled('staff_id')) {
-      $staffId = $request->input('staff_id');
-      $query->where('assign_to', 'like', $staffId);
+      $staffId = $this->normalizeToArray($request->input('staff_id'));
+      $query->whereIn('assign_to', $staffId);
     }
 
     if ($request->filled('priority')) {
-      $staffId = $request->input('priority');
-      $query->where('priority', 'like', $staffId);
+      $staffId = $this->normalizeToArray($request->input('priority'));
+      $query->whereIn('priority', $staffId);
     }
 
     if ($request->filled('deadline_from')) {
@@ -79,19 +79,26 @@ class TicketService
       $query->whereDate('created_at', '<=', $request->input('created_to'));
     }
 
-    if ($request->filled('status') && is_array($request->input('status'))) {
-      $statuses = $request->input('status');
+    if ($request->filled('status')) {
+      $statuses = $this->normalizeToArray($request->input('status'));
       $query->whereIn('status', $statuses);
     }
 
-    if ($request->filled('is_column') && $request->boolean('is_column') == true) {
-
+    if ($request->filled('is_search') && $request->boolean('is_search') == true) {
       $perPage = $request->input('perPage', PaginateConstant::DEFAULT_PER_PAGE->value);
       $list = $query->limit($perPage)->get();
     } else {
       $statusList = TicketStatus::list();
+      $filterStatusList = TicketStatus::listValue();
+      if ($request->filled('status')) {
+        $filterStatusList = $this->normalizeToArray($request->input('status'));
+      }
 
       foreach ($statusList as $status) {
+        if (!in_array($status->value, $filterStatusList)) {
+          $list[$status->column_label()] = [];
+          continue;
+        }
         $tempQuery = (clone $query)->where('status', $status->value);
         $list[$status->column_label()] = $tempQuery->get();
       }
@@ -99,6 +106,19 @@ class TicketService
 
     return $list;
   }
+
+  function normalizeToArray(string $input): array
+{
+    // Try JSON decode first
+    $decoded = json_decode($input, true);
+
+    if (is_array($decoded)) {
+        return array_map('intval', $decoded);
+    }
+
+    // Fallback to comma-separated string
+    return array_map('intval', explode(',', $input));
+}
 
   public function createTicket($data)
   {

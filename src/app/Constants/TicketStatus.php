@@ -38,4 +38,14 @@ enum TicketStatus: int
             self::Closed,
         ];
     }
+
+    public static function listValue()
+    {
+        return [
+            self::New->value,
+            self::InProgress->value,
+            self::Resolved->value,
+            self::Closed->value,
+        ];
+    }
 }
