@@ -14,6 +14,15 @@ class CommentController extends Controller
 
     }
 
+    public function index(Request $request, $ticket_id)
+    {
+        $data = $this->commentService->getListComment($request,$ticket_id);
+        return response()->success(
+            $data,
+            __('messages.model_list', ['model' => 'Comment'])
+        );
+    }
+
     public function store(CreateCommentRequest $request, $ticket_id)
     {
         $validated = $request->validated();

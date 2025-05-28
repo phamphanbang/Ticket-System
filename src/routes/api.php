@@ -21,8 +21,9 @@ Route::middleware('auth:sanctum')->group(function () {
   Route::post('tickets/{ticket}/resolve', [TicketController::class, 'staffResolveTicket'])->name('staff.resolve.ticket');
   Route::post('tickets/{ticket}/delay', [TicketController::class, 'staffDelayTicket'])->name('staff.delay.ticket');
 
+  Route::get('tickets/{ticket}/comments', [CommentController::class, 'index'])->name('staff.get.comment');
+
   Route::post('tickets/{ticket}/comments', [CommentController::class, 'store'])->name('staff.create.comment');
-  
 });
 Route::post('tickets/{ticket}/reject', [TicketController::class, 'clientRejectTicket'])->name('client.reject.ticket')->middleware('signed');
 Route::post('tickets/{ticket}/close', [TicketController::class, 'clientCloseTicket'])->name('client.close.ticket')->middleware('signed');
