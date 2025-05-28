@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\TicketMail;
+use Illuminate\Support\Facades\Log;
 use Webklex\PHPIMAP\Message;
 
 class TicketMailService
@@ -10,11 +11,10 @@ class TicketMailService
   public function processIMAPEmail(Message $message)
   {
     $from = $message->getFrom()[0];
-    // dump('message',$message->getInReplyTo()->get());
     $data['message_id'] = $message->getMessageId();
     $data['in_reply_to'] = $message->getInReplyTo()->get();
     $data['references'] = $message->getReferences()->get() ?? [];
-    $data['raw_email'] = $message->getRawContent();
+    $data['raw_email'] = $message->getRawMessage();
     $data['from_email'] = $from->mail;
     $data['from_name'] = $from->personal ?: 'Unknown Client';
     $data['subject'] = $message->getSubject();

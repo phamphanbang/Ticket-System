@@ -43,6 +43,7 @@ class FetchClientMails extends Command
      */
     public function handle()
     {
+        Log::info('YourCommand is running at ' . now());
         $IMAP_client = Client::account('default');
         $IMAP_client->connect();
 
@@ -65,9 +66,10 @@ class FetchClientMails extends Command
                 continue;
             }
 
-            $parentMail = $this->ticketMailService->findByMessageId($data['in_reply_to']);
-            if (!$parentMail) continue;
-            $ticket = $this->ticketService->getTicketById($parentMail->ticket_id);
+            preg_match('/Ticket#\[(.*?)\]/', $data['subject'], $matches);
+
+            $ticketId = $matches[1] ?? null;
+            $ticket = $this->ticketService->getTicketById($ticketId);
             if (!$ticket) continue;
             $mail = $this->ticketMailService->createTicketMail([
                 ...$data,
@@ -85,7 +87,6 @@ class FetchClientMails extends Command
         }
 
         $IMAP_client->disconnect();
-        Log::info('YourCommand is running at ' . now());
 
         $this->info('Emails fetched successfully.');
     }

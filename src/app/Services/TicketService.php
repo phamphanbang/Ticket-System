@@ -232,7 +232,7 @@ class TicketService
 
   public function getTicketById($id)
   {
-    $ticket = Ticket::find($id);
+    $ticket = Ticket::where('id', $id)->first();
     TicketValidator::checkTicketExists($ticket);
 
     return $ticket->load(['assignTo', 'client']);
