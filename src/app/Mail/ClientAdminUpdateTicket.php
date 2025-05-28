@@ -29,7 +29,7 @@ class ClientAdminUpdateTicket extends Mailable implements ShouldQueue
                 address: config('mail.from.address'),
                 name: config('mail.from.name'),
             ),
-            subject: 'Your ticket has been updated',
+            subject: 'Your Ticket#['.$this->ticket->id.'] has been updated',
         );
     }
 

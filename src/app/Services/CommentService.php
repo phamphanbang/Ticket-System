@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Mail\StaffCreateComment;
+use App\Mail\ClientStaffCreateComment;
 use App\Models\Comment;
 use App\Validators\TicketValidator;
 use Illuminate\Support\Facades\Log;
@@ -32,7 +32,7 @@ class CommentService
     $client = $ticket->client;
     $comment = $this->createComment($comment);
 
-    Mail::to($client->email)->queue(new StaffCreateComment($comment, $ticket, $client));
+    Mail::to($client->email)->queue(new ClientStaffCreateComment($comment, $ticket, $client));
 
     return $comment;
     

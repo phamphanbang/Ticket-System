@@ -5,18 +5,22 @@ namespace App\Mail;
 use App\Models\Client;
 use App\Models\Comment;
 use App\Models\Ticket;
+use App\Models\TicketMail;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
+use Illuminate\Mail\Mailables\Headers;
+use Illuminate\Mail\Message;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
+use Str;
 
-class StaffCreateComment extends Mailable implements ShouldQueue
+class ClientStaffCreateComment extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
-
     /**
      * Create a new message instance.
      */
@@ -24,10 +28,7 @@ class StaffCreateComment extends Mailable implements ShouldQueue
         protected Comment $comment,
         protected Ticket $ticket,
         protected Client $client
-        )
-    {
-        //
-    }
+    ) {}
 
     /**
      * Get the message envelope.
@@ -39,7 +40,7 @@ class StaffCreateComment extends Mailable implements ShouldQueue
                 address: config('mail.from.address'),
                 name: config('mail.from.name'),
             ),
-            subject: 'You have a new comment on your ticket',
+            subject: 'You have a new comment on your Ticket#['.$this->ticket->id.']',
         );
     }
 

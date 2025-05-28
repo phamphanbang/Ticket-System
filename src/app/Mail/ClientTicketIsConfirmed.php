@@ -29,7 +29,7 @@ class ClientTicketIsConfirmed extends Mailable implements ShouldQueue
                 address: config('mail.from.address'),
                 name: config('mail.from.name'),
             ),
-            subject: 'Your ticket has been confirmed and being worked on',
+            subject: 'Your Ticket#['.$this->ticket->id.'] has been confirmed and being worked on',
         );
     }
 
