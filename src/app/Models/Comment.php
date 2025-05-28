@@ -12,6 +12,7 @@ class Comment extends Model
         'ticket_id',
         'user_id',
         'user_type',
+        'mail_id',
         'body',
     ];
     
@@ -23,6 +24,11 @@ class Comment extends Model
     public function ticket()
     {
         return $this->belongsTo(Ticket::class);
+    }
+
+    public function mail()
+    {
+        return $this->belongsTo(TicketMail::class, 'mail_id');
     }
 
 }

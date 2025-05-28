@@ -29,7 +29,7 @@ class ClientStaffDelayTicket extends Mailable implements ShouldQueue
                 address: config('mail.from.address'),
                 name: config('mail.from.name'),
             ),
-            subject: 'Ticket # '.$this->ticket->id.' – Update Regarding Resolution Time',
+            subject: 'Your Ticket#['.$this->ticket->id.'] – Update Regarding Resolution Time',
         );
     }
 
