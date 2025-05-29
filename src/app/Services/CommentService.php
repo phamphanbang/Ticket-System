@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Constants\PaginateConstant;
+use App\Constants\UserRoles;
 use App\Mail\ClientStaffCreateComment;
 use App\Models\Comment;
 use App\Validators\TicketValidator;
@@ -72,7 +73,9 @@ class CommentService
   public function staffCommentTicket($comment)
   {
     $ticket = $this->ticketService->getTicketById($comment['ticket_id']);
-    TicketValidator::checkStaffIsAssignedToTicket($ticket,$comment['user_id']);
+    if(auth()->user()->role != UserRoles::ADMIN->value) {
+      TicketValidator::checkStaffIsAssignedToTicket($ticket,$comment['user_id']);
+    }
 
     $client = $ticket->client;
     $comment = $this->createComment($comment);

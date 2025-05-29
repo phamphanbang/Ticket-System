@@ -6,6 +6,7 @@ use App\Constants\PaginateConstant;
 use App\Constants\TicketStatus;
 use App\Constants\UserRoles;
 use App\Exceptions\InvalidTicketAssignmentException;
+use App\Http\Resources\TicketResource;
 use App\Mail\ClientAdminUpdateTicket;
 use App\Mail\ClientStaffDelayTicket;
 use App\Mail\ClientTicketCreated;
@@ -21,6 +22,7 @@ use App\Models\Ticket;
 use App\Models\User;
 use App\Validators\TicketValidator;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 class TicketService
@@ -50,11 +52,6 @@ class TicketService
       });
     }
 
-    // if ($request->filled('client_email')) {
-    //   $clientEmail = $request->input('client_email');
-    //   $query->where('client_email', 'like', "%{$clientEmail}%");
-    // }
-
     if ($request->filled('staff_id')) {
       $staffId = $this->normalizeToArray($request->input('staff_id'));
       $query->whereIn('assign_to', $staffId);
@@ -79,46 +76,68 @@ class TicketService
       $query->whereDate('created_at', '<=', $request->input('created_to'));
     }
 
+    // if ($request->filled('status')) {
+    //   $statuses = $this->normalizeToArray($request->input('status'));
+    //   $query->whereIn('status', $statuses);
+    // }
+
+    // if ($request->filled('is_search') && $request->boolean('is_search') == true) {
+    //   $perPage = $request->input('perPage', PaginateConstant::DEFAULT_PER_PAGE->value);
+    //   $list = $query->limit($perPage)->get();
+    // } else {
+    //   $statusList = TicketStatus::list();
+    //   $filterStatusList = TicketStatus::listValue();
+    //   if ($request->filled('status')) {
+    //     $filterStatusList = $this->normalizeToArray($request->input('status'));
+    //   }
+
+    //   foreach ($statusList as $status) {
+    //     if (!in_array($status->value, $filterStatusList)) {
+    //       $list[$status->column_label()] = [];
+    //       continue;
+    //     }
+    //     $tempQuery = (clone $query)->where('status', $status->value);
+    //     $list[$status->column_label()] = $tempQuery->get();
+    //   }
+    // }
+    $filterStatuses = TicketStatus::listValue();
     if ($request->filled('status')) {
-      $statuses = $this->normalizeToArray($request->input('status'));
-      $query->whereIn('status', $statuses);
+        $filterStatuses = $this->normalizeToArray($request->input('status'));
+        $query->whereIn('status', $filterStatuses);
     }
 
-    if ($request->filled('is_search') && $request->boolean('is_search') == true) {
-      $perPage = $request->input('perPage', PaginateConstant::DEFAULT_PER_PAGE->value);
-      $list = $query->limit($perPage)->get();
-    } else {
-      $statusList = TicketStatus::list();
-      $filterStatusList = TicketStatus::listValue();
-      if ($request->filled('status')) {
-        $filterStatusList = $this->normalizeToArray($request->input('status'));
-      }
+    if ($request->boolean('is_search')) {
+        $perPage = $request->input('perPage', PaginateConstant::DEFAULT_PER_PAGE->value);
+        return $query->limit($perPage)->get()->map(function ($ticket) {
+          return new TicketResource($ticket);
+        });
+    }
 
-      foreach ($statusList as $status) {
-        if (!in_array($status->value, $filterStatusList)) {
-          $list[$status->column_label()] = [];
-          continue;
+    $list = [];
+    foreach (TicketStatus::list() as $status) {
+        if (!in_array($status->value, $filterStatuses)) {
+            $list[$status->column_label()] = [];
+            continue;
         }
-        $tempQuery = (clone $query)->where('status', $status->value);
-        $list[$status->column_label()] = $tempQuery->get();
-      }
+        $list[$status->column_label()] = (clone $query)->where('status', $status->value)->get()->map(function ($ticket) {
+          return new TicketResource($ticket);
+        });
     }
-
     return $list;
   }
 
   function normalizeToArray(string $input): array
-{
+  {
     // Try JSON decode first
     $decoded = json_decode($input, true);
 
     if (is_array($decoded)) {
-        return array_map('intval', $decoded);
+      return array_map('intval', $decoded);
     }
 
     // Fallback to comma-separated string
     return array_map('intval', explode(',', $input));
-}
+  }
 
   public function createTicket($data)
   {
@@ -162,8 +181,8 @@ class TicketService
 
     $ticket->update($data);
 
-    $oldUser = $oldAssignId ? User::find($oldAssignId)->first() : null;
-    $newUser = $newAssignId ? User::find($newAssignId)->first() : null;
+    $oldUser = $oldAssignId ? User::where('id',$oldAssignId)->first() : null;
+    $newUser = $newAssignId ? User::where('id',$newAssignId)->first() : null;
 
     if (is_null($oldAssignId) && $newUser) {
       Mail::to($newUser->email)
@@ -180,7 +199,6 @@ class TicketService
     if ($oldAssignId !== $newAssignId || $oldTitle !== $ticket->title || $oldDescription !== $ticket->description) {
       Mail::to($ticket->client->email)->queue(new ClientAdminUpdateTicket($ticket));
     }
-
     return $ticket;
   }
 
@@ -258,8 +276,9 @@ class TicketService
       throw new InvalidTicketAssignmentException(__('error.you_are_not_admin'));
     }
     $ticket->update($data);
-
-    Mail::to($ticket->assignTo->email)->queue(new StaffTicketIsClosed($ticket));
+    if ($ticket->assign_to) {
+      Mail::to($ticket->assignTo->email)->queue(new StaffTicketIsClosed($ticket));
+    }
 
     if ($user) {
       Mail::to($ticket->client->email)->queue(new ClientTicketIsClosed($ticket));

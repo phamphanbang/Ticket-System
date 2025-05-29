@@ -23,7 +23,6 @@ class TicketValidator
       case TicketStatus::New->value:
         $errorMessage = __('error.ticket_assigned_not_new');
         break;
-
       case TicketStatus::InProgress->value:
         $errorMessage = __('error.ticket_not_in_progress');
         break;

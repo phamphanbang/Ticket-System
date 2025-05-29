@@ -19,7 +19,9 @@ class TicketMailService
     $data['from_name'] = $from->personal ?: 'Unknown Client';
     $data['subject'] = $message->getSubject();
     $data['htmlBody'] = $message->getHTMLBody();
-    $data['body'] = $message->getTextBody() ?: strip_tags($data['htmlBody']);
+
+    $body = $message->getTextBody() ?: strip_tags($data['htmlBody']);
+    $data['body'] = $this->extractReplyFromEmail($body);
     $data['parse_email'] = $message->getTextBody() ?: strip_tags($data['htmlBody']);
     return $data;
   }
@@ -34,4 +36,12 @@ class TicketMailService
   {
     return TicketMail::where('message_id', $messageId)->first();
   }
+
+  function extractReplyFromEmail($body) {
+    $pattern = '/^On .+ wrote:|^From:|^Vào .*? viết:/mi';
+
+    $parts = preg_split($pattern, $body, 2);
+
+    return trim($parts[0]);
+}
 }
