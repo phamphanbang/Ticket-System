@@ -56,6 +56,10 @@ class FetchClientMails extends Command
             if ($check) continue;
             $data = $this->ticketMailService->processIMAPEmail($message);
 
+            if (!$data['in_reply_to'] && !str_contains($data['subject'], '[ESReport]')) {
+                continue;
+            }
+
             $ticket_client = $this->clientService->createClient([
                 'name' => $data['from_name'],
                 'email' => $data['from_email'],

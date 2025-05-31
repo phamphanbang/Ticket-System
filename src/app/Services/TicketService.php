@@ -2,9 +2,11 @@
 
 namespace App\Services;
 
+use App\Constants\PaginateConstant;
 use App\Constants\TicketStatus;
 use App\Constants\UserRoles;
 use App\Exceptions\InvalidTicketAssignmentException;
+use App\Http\Resources\TicketResource;
 use App\Mail\ClientAdminUpdateTicket;
 use App\Mail\ClientStaffDelayTicket;
 use App\Mail\ClientTicketCreated;
@@ -20,6 +22,7 @@ use App\Models\Ticket;
 use App\Models\User;
 use App\Validators\TicketValidator;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 class TicketService
@@ -27,21 +30,41 @@ class TicketService
   public function __construct(
     protected ClientService $clientService,
     protected TicketMailService $ticketMailService
-    )
-  {
+  ) {
     // Constructor to inject ClientService dependency
 
   }
   public function getListTicket($request)
   {
     $user = auth()->user();
-    $list = [];
-    $query = Ticket::query()->with('assignTo');
+    $query = $this->buildBaseQuery($user);
+    
+    $this->applySearchFilters($query, $request);
+    $this->applyDateFilters($query, $request);
+    
+    $filterStatuses = $this->getFilterStatuses($request);
+    $query->whereIn('status', $filterStatuses);
 
-    if ($user->role == UserRoles::STAFF->value) {
-      $query = $query->where('assign_to', $user->id);
+    if ($request->boolean('is_search')) {
+      return $this->getSearchResults($query, $request);
     }
 
+    return $this->getGroupedResults($query, $filterStatuses);
+  }
+
+  private function buildBaseQuery($user)
+  {
+    $query = Ticket::query()->with('assignTo');
+    
+    if ($user->role == UserRoles::STAFF->value) {
+      $query->where('assign_to', $user->id);
+    }
+    
+    return $query;
+  }
+
+  private function applySearchFilters($query, $request)
+  {
     if ($request->filled('search')) {
       $searchTerm = $request->input('search');
       $query->where(function ($q) use ($searchTerm) {
@@ -50,21 +73,19 @@ class TicketService
       });
     }
 
-    // if ($request->filled('client_email')) {
-    //   $clientEmail = $request->input('client_email');
-    //   $query->where('client_email', 'like', "%{$clientEmail}%");
-    // }
-
     if ($request->filled('staff_id')) {
-      $staffId = $request->input('staff_id');
-      $query->where('assign_to', 'like', $staffId);
+      $staffIds = $this->normalizeToArray($request->input('staff_id'));
+      $query->whereIn('assign_to', $staffIds);
     }
 
     if ($request->filled('priority')) {
-      $staffId = $request->input('priority');
-      $query->where('priority', 'like', $staffId);
+      $priorities = $this->normalizeToArray($request->input('priority'));
+      $query->whereIn('priority', $priorities);
     }
+  }
 
+  private function applyDateFilters($query, $request)
+  {
     if ($request->filled('deadline_from')) {
       $query->whereDate('deadline', '>=', $request->input('deadline_from'));
     }
@@ -72,14 +93,58 @@ class TicketService
       $query->whereDate('deadline', '<=', $request->input('deadline_to'));
     }
 
-    $statusList = TicketStatus::list();
+    if ($request->filled('created_from')) {
+      $query->whereDate('created_at', '>=', $request->input('created_from'));
+    }
+    if ($request->filled('created_to')) {
+      $query->whereDate('created_at', '<=', $request->input('created_to'));
+    }
+  }
 
-    foreach ($statusList as $status) {
-      $tempQuery = (clone $query)->where('status', $status->value);
-      $list[$status->column_label()] = $tempQuery->get();
+  private function getFilterStatuses($request)
+  {
+    if ($request->filled('status')) {
+      return $this->normalizeToArray($request->input('status'));
+    }
+    return TicketStatus::listValue();
+  }
+
+  private function getSearchResults($query, $request)
+  {
+    $perPage = $request->input('perPage', PaginateConstant::DEFAULT_PER_PAGE->value);
+    return $query->limit($perPage)
+      ->get()
+      ->map(fn ($ticket) => new TicketResource($ticket));
+  }
+
+  private function getGroupedResults($query, $filterStatuses)
+  {
+    $list = [];
+    foreach (TicketStatus::list() as $status) {
+      if (!in_array($status->value, $filterStatuses)) {
+        $list[$status->column_label()] = [];
+        continue;
+      }
+      
+      $list[$status->column_label()] = (clone $query)
+        ->where('status', $status->value)
+        ->get()
+        ->map(fn ($ticket) => new TicketResource($ticket));
+    }
+    return $list;
+  }
+
+  function normalizeToArray(string $input): array
+  {
+    // Try JSON decode first
+    $decoded = json_decode($input, true);
+
+    if (is_array($decoded)) {
+      return array_map('intval', $decoded);
     }
 
-    return $list;
+    // Fallback to comma-separated string
+    return array_map('intval', explode(',', $input));
   }
 
   public function createTicket($data)
@@ -124,8 +189,8 @@ class TicketService
 
     $ticket->update($data);
 
-    $oldUser = $oldAssignId ? User::find($oldAssignId)->first() : null;
-    $newUser = $newAssignId ? User::find($newAssignId)->first() : null;
+    $oldUser = $oldAssignId ? User::where('id',$oldAssignId)->first() : null;
+    $newUser = $newAssignId ? User::where('id',$newAssignId)->first() : null;
 
     if (is_null($oldAssignId) && $newUser) {
       Mail::to($newUser->email)
@@ -142,7 +207,6 @@ class TicketService
     if ($oldAssignId !== $newAssignId || $oldTitle !== $ticket->title || $oldDescription !== $ticket->description) {
       Mail::to($ticket->client->email)->queue(new ClientAdminUpdateTicket($ticket));
     }
-
     return $ticket;
   }
 
@@ -220,8 +284,9 @@ class TicketService
       throw new InvalidTicketAssignmentException(__('error.you_are_not_admin'));
     }
     $ticket->update($data);
-
-    Mail::to($ticket->assignTo->email)->queue(new StaffTicketIsClosed($ticket));
+    if ($ticket->assign_to) {
+      Mail::to($ticket->assignTo->email)->queue(new StaffTicketIsClosed($ticket));
+    }
 
     if ($user) {
       Mail::to($ticket->client->email)->queue(new ClientTicketIsClosed($ticket));
