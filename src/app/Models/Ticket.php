@@ -2,44 +2,33 @@
 
 namespace App\Models;
 
-use App\Constants\TicketStatus;
+use App\Constants\InternalStatus;
+use App\Constants\ExternalStatus;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 
 class Ticket extends Model
 {
     use HasUuids;
+    
     protected $fillable = [
-        'title',
+        'subject',
         'description',
-        'assign_to',
-        'priority',
-        'deadline',
-        'status',
-        'client_id',
-        'created_mail_id'
+        'internal_status',
+        'external_status',
+        'client_id'
     ];
 
     protected $casts = [
-        'status' => TicketStatus::class,
+        'internal_status' => InternalStatus::class,
+        'external_status' => ExternalStatus::class,
         'created_at' => 'datetime',
-        'updated_at' => 'datetime',
-        'deadline' => 'datetime',
+        'updated_at' => 'datetime'
     ];
 
     public function client()
     {
         return $this->belongsTo(Client::class);
-    }
-
-    public function createdMail()
-    {
-        return $this->belongsTo(TicketMail::class, 'created_mail_id');
-    }
-
-    public function assignTo()
-    {
-        return $this->belongsTo(User::class, 'assign_to');
     }
 
     public function comments()
@@ -52,8 +41,13 @@ class Ticket extends Model
         return $this->hasMany(TicketLog::class);
     }
 
-    public function scopeWithStatus($query, $status)
+    public function scopeWithInternalStatus($query, $status)
     {
-        return $query->where('status', $status);
+        return $query->where('internal_status', $status);
+    }
+
+    public function scopeWithExternalStatus($query, $status) 
+    {
+        return $query->where('external_status', $status);
     }
 }
