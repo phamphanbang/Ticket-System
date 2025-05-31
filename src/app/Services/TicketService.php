@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Constants\ExternalStatus;
+use App\Constants\InternalStatus;
 use App\Constants\PaginateConstant;
 use App\Constants\TicketStatus;
 use App\Constants\UserRoles;
@@ -34,140 +36,19 @@ class TicketService
     // Constructor to inject ClientService dependency
 
   }
-  public function getListTicket($request)
+
+  public function store(array $data)
   {
-    $user = auth()->user();
-    $query = $this->buildBaseQuery($user);
-    
-    $this->applySearchFilters($query, $request);
-    $this->applyDateFilters($query, $request);
-    
-    $filterStatuses = $this->getFilterStatuses($request);
-    $query->whereIn('status', $filterStatuses);
-
-    if ($request->boolean('is_search')) {
-      return $this->getSearchResults($query, $request);
-    }
-
-    return $this->getGroupedResults($query, $filterStatuses);
-  }
-
-  private function buildBaseQuery($user)
-  {
-    $query = Ticket::query()->with('assignTo');
-    
-    if ($user->role == UserRoles::STAFF->value) {
-      $query->where('assign_to', $user->id);
-    }
-    
-    return $query;
-  }
-
-  private function applySearchFilters($query, $request)
-  {
-    if ($request->filled('search')) {
-      $searchTerm = $request->input('search');
-      $query->where(function ($q) use ($searchTerm) {
-        $q->where('title', 'like', "%{$searchTerm}%")
-          ->orWhere('description', 'like', "%{$searchTerm}%");
-      });
-    }
-
-    if ($request->filled('staff_id')) {
-      $staffIds = $this->normalizeToArray($request->input('staff_id'));
-      $query->whereIn('assign_to', $staffIds);
-    }
-
-    if ($request->filled('priority')) {
-      $priorities = $this->normalizeToArray($request->input('priority'));
-      $query->whereIn('priority', $priorities);
-    }
-  }
-
-  private function applyDateFilters($query, $request)
-  {
-    if ($request->filled('deadline_from')) {
-      $query->whereDate('deadline', '>=', $request->input('deadline_from'));
-    }
-    if ($request->filled('deadline_to')) {
-      $query->whereDate('deadline', '<=', $request->input('deadline_to'));
-    }
-
-    if ($request->filled('created_from')) {
-      $query->whereDate('created_at', '>=', $request->input('created_from'));
-    }
-    if ($request->filled('created_to')) {
-      $query->whereDate('created_at', '<=', $request->input('created_to'));
-    }
-  }
-
-  private function getFilterStatuses($request)
-  {
-    if ($request->filled('status')) {
-      return $this->normalizeToArray($request->input('status'));
-    }
-    return TicketStatus::listValue();
-  }
-
-  private function getSearchResults($query, $request)
-  {
-    $perPage = $request->input('perPage', PaginateConstant::DEFAULT_PER_PAGE->value);
-    return $query->limit($perPage)
-      ->get()
-      ->map(fn ($ticket) => new TicketResource($ticket));
-  }
-
-  private function getGroupedResults($query, $filterStatuses)
-  {
-    $list = [];
-    foreach (TicketStatus::list() as $status) {
-      if (!in_array($status->value, $filterStatuses)) {
-        $list[$status->column_label()] = [];
-        continue;
-      }
-      
-      $list[$status->column_label()] = (clone $query)
-        ->where('status', $status->value)
-        ->get()
-        ->map(fn ($ticket) => new TicketResource($ticket));
-    }
-    return $list;
-  }
-
-  function normalizeToArray(string $input): array
-  {
-    // Try JSON decode first
-    $decoded = json_decode($input, true);
-
-    if (is_array($decoded)) {
-      return array_map('intval', $decoded);
-    }
-
-    // Fallback to comma-separated string
-    return array_map('intval', explode(',', $input));
-  }
-
-  public function createTicket($data)
-  {
-    $ticket = Ticket::create($data);
-
-    return $ticket->load(['assignTo', 'assignTo.role', 'client']);
-  }
-
-  public function adminCreateTicket(array $data)
-  {
-    $client_data = [
-      'name' => $data['client_name'],
+    $client = $this->clientService->createClient([
+      'name' => explode('@', $data['client_email'])[0],
       'email' => $data['client_email']
-    ];
-    $client = $this->clientService->createClient($client_data);
-    $data['client_id'] = $client->id;
+    ]);
 
-    $ticket = $this->createTicket($data);
-    if ($ticket->assign_to) {
-      Mail::to($ticket->assignTo->email)
-        ->queue(new StaffAssignedToNewTicket($ticket));
-    }
+    $data['client_id'] = $client->id;
+    $data['internal_status'] = InternalStatus::NEW->value;
+    $data['external_status'] = ExternalStatus::RECEIVED->value;
+
+    $ticket = Ticket::create($data);
 
     Mail::to($ticket->client->email)
       ->queue(new ClientTicketCreated($ticket));
@@ -175,152 +56,152 @@ class TicketService
     return $ticket;
   }
 
-  public function update($data, $id)
-  {
-    $ticket = Ticket::where('id', $id)->first();
+  // public function update($data, $id)
+  // {
+  //   $ticket = Ticket::where('id', $id)->first();
 
-    TicketValidator::checkTicketExists($ticket);
-    TicketValidator::checkTicketStatus($ticket, TicketStatus::New->value);
+  //   TicketValidator::checkTicketExists($ticket);
+  //   TicketValidator::checkTicketStatus($ticket, TicketStatus::New->value);
 
-    $oldTitle = $ticket->title;
-    $oldDescription = $ticket->description;
-    $oldAssignId = $ticket->assign_to;
-    $newAssignId = $data['assign_to'] ?? null;
+  //   $oldTitle = $ticket->title;
+  //   $oldDescription = $ticket->description;
+  //   $oldAssignId = $ticket->assign_to;
+  //   $newAssignId = $data['assign_to'] ?? null;
 
-    $ticket->update($data);
+  //   $ticket->update($data);
 
-    $oldUser = $oldAssignId ? User::where('id',$oldAssignId)->first() : null;
-    $newUser = $newAssignId ? User::where('id',$newAssignId)->first() : null;
+  //   $oldUser = $oldAssignId ? User::where('id',$oldAssignId)->first() : null;
+  //   $newUser = $newAssignId ? User::where('id',$newAssignId)->first() : null;
 
-    if (is_null($oldAssignId) && $newUser) {
-      Mail::to($newUser->email)
-        ->queue(new StaffAssignedToNewTicket($ticket));
-    }
+  //   if (is_null($oldAssignId) && $newUser) {
+  //     Mail::to($newUser->email)
+  //       ->queue(new StaffAssignedToNewTicket($ticket));
+  //   }
 
-    if ($oldUser && is_null($newAssignId)) {
-      Mail::to($oldUser->email)->queue(new StaffUnassignedToTicket($ticket, $oldUser));
-    }
-    if ($oldUser && $newUser && $oldAssignId !== $newAssignId) {
-      Mail::to($newUser->email)->queue(new StaffAssignedToNewTicket($ticket));
-      Mail::to($oldUser->email)->queue(new StaffUnassignedToTicket($ticket, $oldUser));
-    }
-    if ($oldAssignId !== $newAssignId || $oldTitle !== $ticket->title || $oldDescription !== $ticket->description) {
-      Mail::to($ticket->client->email)->queue(new ClientAdminUpdateTicket($ticket));
-    }
-    return $ticket;
-  }
+  //   if ($oldUser && is_null($newAssignId)) {
+  //     Mail::to($oldUser->email)->queue(new StaffUnassignedToTicket($ticket, $oldUser));
+  //   }
+  //   if ($oldUser && $newUser && $oldAssignId !== $newAssignId) {
+  //     Mail::to($newUser->email)->queue(new StaffAssignedToNewTicket($ticket));
+  //     Mail::to($oldUser->email)->queue(new StaffUnassignedToTicket($ticket, $oldUser));
+  //   }
+  //   if ($oldAssignId !== $newAssignId || $oldTitle !== $ticket->title || $oldDescription !== $ticket->description) {
+  //     Mail::to($ticket->client->email)->queue(new ClientAdminUpdateTicket($ticket));
+  //   }
+  //   return $ticket;
+  // }
 
-  public function staffConfirmTicket($data, $id)
-  {
-    $user = auth()->user();
-    $ticket = Ticket::where('id', $id)->first();
+  // public function staffConfirmTicket($data, $id)
+  // {
+  //   $user = auth()->user();
+  //   $ticket = Ticket::where('id', $id)->first();
 
-    TicketValidator::checkTicketExists($ticket);
-    TicketValidator::checkTicketStatus($ticket, TicketStatus::New->value);
-    TicketValidator::checkStaffIsAssignedToTicket($ticket, $user->id);
+  //   TicketValidator::checkTicketExists($ticket);
+  //   TicketValidator::checkTicketStatus($ticket, TicketStatus::New->value);
+  //   TicketValidator::checkStaffIsAssignedToTicket($ticket, $user->id);
 
-    $ticket->update($data);
+  //   $ticket->update($data);
 
-    Mail::to($ticket->client->email)->queue(new ClientTicketIsConfirmed($ticket));
+  //   Mail::to($ticket->client->email)->queue(new ClientTicketIsConfirmed($ticket));
 
-    return $ticket;
-  }
+  //   return $ticket;
+  // }
 
-  public function staffResolveTicket($data, $id)
-  {
-    $user = auth()->user();
-    $ticket = Ticket::where('id', $id)->first();
+  // public function staffResolveTicket($data, $id)
+  // {
+  //   $user = auth()->user();
+  //   $ticket = Ticket::where('id', $id)->first();
 
-    TicketValidator::checkTicketExists($ticket);
-    TicketValidator::checkTicketStatus($ticket, TicketStatus::InProgress->value);
-    TicketValidator::checkStaffIsAssignedToTicket($ticket, $user->id);
+  //   TicketValidator::checkTicketExists($ticket);
+  //   TicketValidator::checkTicketStatus($ticket, TicketStatus::InProgress->value);
+  //   TicketValidator::checkStaffIsAssignedToTicket($ticket, $user->id);
 
-    $ticket->update($data);
+  //   $ticket->update($data);
 
-    Mail::to($ticket->client->email)->queue(new ClientTicketIsResolved($ticket));
+  //   Mail::to($ticket->client->email)->queue(new ClientTicketIsResolved($ticket));
 
-    return $ticket;
-  }
+  //   return $ticket;
+  // }
 
-  public function staffDelayTicket($data, $id)
-  {
-    $user = auth()->user();
-    $ticket = Ticket::where('id', $id)->first();
+  // public function staffDelayTicket($data, $id)
+  // {
+  //   $user = auth()->user();
+  //   $ticket = Ticket::where('id', $id)->first();
 
-    TicketValidator::checkTicketExists($ticket);
-    TicketValidator::checkTicketStatus($ticket, TicketStatus::InProgress->value);
-    TicketValidator::checkStaffIsAssignedToTicket($ticket, $user->id);
+  //   TicketValidator::checkTicketExists($ticket);
+  //   TicketValidator::checkTicketStatus($ticket, TicketStatus::InProgress->value);
+  //   TicketValidator::checkStaffIsAssignedToTicket($ticket, $user->id);
 
-    $ticket->update($data);
+  //   $ticket->update($data);
 
-    Mail::to($ticket->client->email)->queue(new ClientStaffDelayTicket($ticket));
+  //   Mail::to($ticket->client->email)->queue(new ClientStaffDelayTicket($ticket));
 
-    return $ticket;
-  }
+  //   return $ticket;
+  // }
 
-  public function clientRejectTicket($data, $id)
-  {
-    $ticket = Ticket::where('id', $id)->first();
-    TicketValidator::checkTicketExists($ticket);
-    TicketValidator::checkTicketStatus($ticket, TicketStatus::Resolved->value);
+  // public function clientRejectTicket($data, $id)
+  // {
+  //   $ticket = Ticket::where('id', $id)->first();
+  //   TicketValidator::checkTicketExists($ticket);
+  //   TicketValidator::checkTicketStatus($ticket, TicketStatus::Resolved->value);
 
-    $ticket->update($data);
+  //   $ticket->update($data);
 
-    Mail::to($ticket->assignTo->email)->queue(new StaffClientRejectTicket($ticket));
+  //   Mail::to($ticket->assignTo->email)->queue(new StaffClientRejectTicket($ticket));
 
-    return $ticket;
-  }
+  //   return $ticket;
+  // }
 
-  public function closeTicket($data, $id)
-  {
-    $ticket = Ticket::where('id', $id)->first();
-    $user = auth()->user();
+  // public function closeTicket($data, $id)
+  // {
+  //   $ticket = Ticket::where('id', $id)->first();
+  //   $user = auth()->user();
 
-    TicketValidator::checkTicketExists($ticket);
-    if (!$user) {
-      TicketValidator::checkTicketStatus($ticket, TicketStatus::Resolved->value);
-    }
-    if ($user && $user->isStaff()) {
-      throw new InvalidTicketAssignmentException(__('error.you_are_not_admin'));
-    }
-    $ticket->update($data);
-    if ($ticket->assign_to) {
-      Mail::to($ticket->assignTo->email)->queue(new StaffTicketIsClosed($ticket));
-    }
+  //   TicketValidator::checkTicketExists($ticket);
+  //   if (!$user) {
+  //     TicketValidator::checkTicketStatus($ticket, TicketStatus::Resolved->value);
+  //   }
+  //   if ($user && $user->isStaff()) {
+  //     throw new InvalidTicketAssignmentException(__('error.you_are_not_admin'));
+  //   }
+  //   $ticket->update($data);
+  //   if ($ticket->assign_to) {
+  //     Mail::to($ticket->assignTo->email)->queue(new StaffTicketIsClosed($ticket));
+  //   }
 
-    if ($user) {
-      Mail::to($ticket->client->email)->queue(new ClientTicketIsClosed($ticket));
-    }
+  //   if ($user) {
+  //     Mail::to($ticket->client->email)->queue(new ClientTicketIsClosed($ticket));
+  //   }
 
-    return $ticket;
-  }
+  //   return $ticket;
+  // }
 
-  public function getTicketById($id)
-  {
-    $ticket = Ticket::where('id', $id)->first();
-    TicketValidator::checkTicketExists($ticket);
+  // public function getTicketById($id)
+  // {
+  //   $ticket = Ticket::where('id', $id)->first();
+  //   TicketValidator::checkTicketExists($ticket);
 
-    return $ticket->load(['assignTo', 'client']);
-  }
+  //   return $ticket->load(['assignTo', 'client']);
+  // }
 
-  public function createTicketFromMail($data, Client $ticket_client)
-  {
-    $ticket = Ticket::create([
-      'title' => $data['subject'],
-      'description' => $data['body'],
-      'client_id' => $ticket_client->id,
-      'status' => TicketStatus::New->value,
-      'deadline' => now()->addDays(7),
-    ]);
+  // public function createTicketFromMail($data, Client $ticket_client)
+  // {
+  //   $ticket = Ticket::create([
+  //     'title' => $data['subject'],
+  //     'description' => $data['body'],
+  //     'client_id' => $ticket_client->id,
+  //     'status' => TicketStatus::New->value,
+  //     'deadline' => now()->addDays(7),
+  //   ]);
 
-    $mail = $this->ticketMailService->createTicketMail([
-      ...$data,
-      'ticket_id' => $ticket->id,
-    ]);
+  //   $mail = $this->ticketMailService->createTicketMail([
+  //     ...$data,
+  //     'ticket_id' => $ticket->id,
+  //   ]);
 
-    $ticket->created_mail_id = $mail->id;
-    $ticket->save();
+  //   $ticket->created_mail_id = $mail->id;
+  //   $ticket->save();
 
-    return $ticket->load(['assignTo', 'client']);
-  }
+  //   return $ticket->load(['assignTo', 'client']);
+  // }
 }

@@ -5,12 +5,11 @@ namespace App\Services;
 use App\Models\Client;
 
 class ClientService {
-  public function createClient($data)
+  public function createClient(array $data): Client
   {
-    $client = Client::where('email', $data['email'])->first();
-    if (!$client) {
-      $client = Client::create($data);
-    }
-    return $client;
+    return Client::firstOrCreate(
+      ['email' => $data['email']],
+      $data
+    );
   }
 }
