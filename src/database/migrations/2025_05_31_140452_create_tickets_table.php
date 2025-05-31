@@ -13,15 +13,11 @@ return new class extends Migration
     {
         Schema::create('tickets', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->string('title');
+            $table->foreignUuid('client_id')->constrained('clients');
+            $table->string('subject');
             $table->text('description');
-            $table->enum('status', [1,2,3,4])->default(1);
-            $table->string('client_name');
-            $table->string('client_email');
-            $table->enum('priority', [1,2,3])->default(2);
-            $table->dateTime('deadline');
-            $table->string('message_id')->nullable();
-            $table->foreignUuid('assign_to')->nullable()->constrained('users','id')->nullOnDelete();
+            $table->enum('internal_status', ['new','in_analysis','awaiting_estimation_approval','awaiting_client_approval','in_progress','under_review','completed','closed']);
+            $table->enum('external_status', ['received','processing','awaiting_your_approval','completed','closed']);
             $table->timestamps();
         });
     }
