@@ -15,7 +15,7 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->foreignUuid('ticket_id')->constrained('tickets');
             $table->foreignUuid('user_id')->constrained('users');
-            $table->foreignUuid('invited_by_user_id')->constrained('users');
+            $table->foreignUuid('invited_by_user_id')->nullable()->constrained('users');
             $table->enum('role_in_ticket', ['client', 'staff', 'leader', 'supporter', 'admin']);
             $table->timestamp('joined_at');
             $table->timestamp('left_at')->nullable();
