@@ -67,12 +67,7 @@ class User extends Authenticatable
 
     public function comments()
     {
-        $this->morphMany(Comment::class,'user');
-    }
-
-    public function role()
-    {
-        return $this->belongsTo(Role::class);
+        $this->hasMany(Comment::class);
     }
 
     public function isAdmin()
@@ -80,8 +75,18 @@ class User extends Authenticatable
         return $this->role === 'admin';
     }
 
-    public function isStaff()
+    public function isStaff() 
     {
         return $this->role === 'staff';
+    }
+
+    public function isLeader()
+    {
+        return $this->role === 'leader';
+    }
+
+    public function isSupporter()
+    {
+        return $this->role === 'supporter';
     }
 }
