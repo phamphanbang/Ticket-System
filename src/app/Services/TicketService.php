@@ -37,13 +37,34 @@ class TicketService
   public function getListTicket($request)
   {
     $user = auth()->user();
-    $list = [];
-    $query = Ticket::query()->with('assignTo');
+    $query = $this->buildBaseQuery($user);
+    
+    $this->applySearchFilters($query, $request);
+    $this->applyDateFilters($query, $request);
+    
+    $filterStatuses = $this->getFilterStatuses($request);
+    $query->whereIn('status', $filterStatuses);
 
-    if ($user->role == UserRoles::STAFF->value) {
-      $query = $query->where('assign_to', $user->id);
+    if ($request->boolean('is_search')) {
+      return $this->getSearchResults($query, $request);
     }
 
+    return $this->getGroupedResults($query, $filterStatuses);
+  }
+
+  private function buildBaseQuery($user)
+  {
+    $query = Ticket::query()->with('assignTo');
+    
+    if ($user->role == UserRoles::STAFF->value) {
+      $query->where('assign_to', $user->id);
+    }
+    
+    return $query;
+  }
+
+  private function applySearchFilters($query, $request)
+  {
     if ($request->filled('search')) {
       $searchTerm = $request->input('search');
       $query->where(function ($q) use ($searchTerm) {
@@ -53,15 +74,18 @@ class TicketService
     }
 
     if ($request->filled('staff_id')) {
-      $staffId = $this->normalizeToArray($request->input('staff_id'));
-      $query->whereIn('assign_to', $staffId);
+      $staffIds = $this->normalizeToArray($request->input('staff_id'));
+      $query->whereIn('assign_to', $staffIds);
     }
 
     if ($request->filled('priority')) {
-      $staffId = $this->normalizeToArray($request->input('priority'));
-      $query->whereIn('priority', $staffId);
+      $priorities = $this->normalizeToArray($request->input('priority'));
+      $query->whereIn('priority', $priorities);
     }
+  }
 
+  private function applyDateFilters($query, $request)
+  {
     if ($request->filled('deadline_from')) {
       $query->whereDate('deadline', '>=', $request->input('deadline_from'));
     }
@@ -75,53 +99,37 @@ class TicketService
     if ($request->filled('created_to')) {
       $query->whereDate('created_at', '<=', $request->input('created_to'));
     }
+  }
 
-    // if ($request->filled('status')) {
-    //   $statuses = $this->normalizeToArray($request->input('status'));
-    //   $query->whereIn('status', $statuses);
-    // }
-
-    // if ($request->filled('is_search') && $request->boolean('is_search') == true) {
-    //   $perPage = $request->input('perPage', PaginateConstant::DEFAULT_PER_PAGE->value);
-    //   $list = $query->limit($perPage)->get();
-    // } else {
-    //   $statusList = TicketStatus::list();
-    //   $filterStatusList = TicketStatus::listValue();
-    //   if ($request->filled('status')) {
-    //     $filterStatusList = $this->normalizeToArray($request->input('status'));
-    //   }
-
-    //   foreach ($statusList as $status) {
-    //     if (!in_array($status->value, $filterStatusList)) {
-    //       $list[$status->column_label()] = [];
-    //       continue;
-    //     }
-    //     $tempQuery = (clone $query)->where('status', $status->value);
-    //     $list[$status->column_label()] = $tempQuery->get();
-    //   }
-    // }
-    $filterStatuses = TicketStatus::listValue();
+  private function getFilterStatuses($request)
+  {
     if ($request->filled('status')) {
-        $filterStatuses = $this->normalizeToArray($request->input('status'));
-        $query->whereIn('status', $filterStatuses);
+      return $this->normalizeToArray($request->input('status'));
     }
+    return TicketStatus::listValue();
+  }
 
-    if ($request->boolean('is_search')) {
-        $perPage = $request->input('perPage', PaginateConstant::DEFAULT_PER_PAGE->value);
-        return $query->limit($perPage)->get()->map(function ($ticket) {
-          return new TicketResource($ticket);
-        });
-    }
+  private function getSearchResults($query, $request)
+  {
+    $perPage = $request->input('perPage', PaginateConstant::DEFAULT_PER_PAGE->value);
+    return $query->limit($perPage)
+      ->get()
+      ->map(fn ($ticket) => new TicketResource($ticket));
+  }
 
+  private function getGroupedResults($query, $filterStatuses)
+  {
     $list = [];
     foreach (TicketStatus::list() as $status) {
-        if (!in_array($status->value, $filterStatuses)) {
-            $list[$status->column_label()] = [];
-            continue;
-        }
-        $list[$status->column_label()] = (clone $query)->where('status', $status->value)->get()->map(function ($ticket) {
-          return new TicketResource($ticket);
-        });
+      if (!in_array($status->value, $filterStatuses)) {
+        $list[$status->column_label()] = [];
+        continue;
+      }
+      
+      $list[$status->column_label()] = (clone $query)
+        ->where('status', $status->value)
+        ->get()
+        ->map(fn ($ticket) => new TicketResource($ticket));
     }
     return $list;
   }

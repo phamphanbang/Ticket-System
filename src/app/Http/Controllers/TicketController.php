@@ -49,7 +49,7 @@ class TicketController extends Controller
     public function update(UpdateTicketRequest $request, $id)
     {
         $validated = $request->validated();
-
+        // dd($request);
         $data = $this->ticketService->update($validated, $id);
         return response()->success(
             new TicketResource($data),
