@@ -17,9 +17,4 @@ class Client extends Model
     {
         return $this->hasMany(Ticket::class);
     }
-
-    public function comments()
-    {
-        $this->morphMany(Comment::class,'user');
-    }
 }
