@@ -16,20 +16,11 @@ class TicketResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'title' => $this->title,
+            'subject' => $this->subject,
             'description' => $this->description,
-            'status' => $this->status,
-            'priority' => (int) $this->priority,
-            'assign_to' => $this->assignTo ? [
-                'id' => $this->assignTo->id,
-                'name' => $this->assignTo->name,
-                'email' => $this->assignTo->email,
-                'role' => $this->assignTo->role,
-            ] : null,
             'client_email' => $this->client?->email,
             'client_name' => $this->client?->name,
-            'deadline' => $this->deadline,
-            'message_id' => $this->message_id,
+            'internal_status' => $this->internal_status,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];
