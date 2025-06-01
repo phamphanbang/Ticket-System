@@ -24,15 +24,14 @@ class TicketParticipant extends Model
         'left_at',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @var array<string, string>
-     */
-    protected $casts = [
-        'joined_at' => 'datetime',
-        'left_at' => 'datetime',
-    ];
+
+    protected function casts(): array
+    {
+        return [
+            'joined_at' => 'datetime:Y-m-d H:i:s',
+            'left_at' => 'datetime:Y-m-d H:i:s',
+        ];
+    }
 
     /**
      * The possible roles in a ticket.

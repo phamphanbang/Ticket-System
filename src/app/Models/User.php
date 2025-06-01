@@ -49,6 +49,8 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'created_at' => 'datetime:Y-m-d H:i:s',
+            'updated_at' => 'datetime:Y-m-d H:i:s',
         ];
     }
 
@@ -67,7 +69,7 @@ class User extends Authenticatable
 
     public function comments()
     {
-        $this->hasMany(Comment::class);
+        $this->hasMany(TicketComment::class);
     }
 
 }
