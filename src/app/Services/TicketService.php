@@ -4,27 +4,10 @@ namespace App\Services;
 
 use App\Constants\ExternalStatus;
 use App\Constants\InternalStatus;
-use App\Constants\PaginateConstant;
-use App\Constants\TicketStatus;
-use App\Constants\UserRoles;
-use App\Exceptions\InvalidTicketAssignmentException;
-use App\Http\Resources\TicketResource;
-use App\Mail\ClientAdminUpdateTicket;
-use App\Mail\ClientStaffDelayTicket;
 use App\Mail\ClientTicketCreated;
-use App\Mail\ClientTicketIsClosed;
-use App\Mail\ClientTicketIsConfirmed;
-use App\Mail\ClientTicketIsResolved;
-use App\Mail\StaffAssignedToNewTicket;
-use App\Mail\StaffClientRejectTicket;
-use App\Mail\StaffTicketIsClosed;
-use App\Mail\StaffUnassignedToTicket;
-use App\Models\Client;
 use App\Models\Ticket;
-use App\Models\User;
+use App\Models\TicketAuditLog;
 use App\Validators\TicketValidator;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 class TicketService
@@ -48,6 +31,21 @@ class TicketService
     $data['external_status'] = ExternalStatus::RECEIVED->value;
 
     $ticket = Ticket::create($data);
+
+    // Create audit log for ticket creation
+    TicketAuditLog::create([
+      'ticket_id' => $ticket->id,
+      'changed_by' => $data['created_by'] ?? auth()->id(),
+      'field_changed' => 'ticket_created',
+      'old_value' => null,
+      'new_value' => json_encode([
+        'title' => $ticket->title,
+        'internal_status' => $ticket->internal_status,
+        'external_status' => $ticket->external_status,
+      ]),
+      'change_type' => 'update',
+      'reason' => 'Ticket created',
+    ]);
 
     Mail::to($ticket->client->email)
       ->queue(new ClientTicketCreated($ticket));
