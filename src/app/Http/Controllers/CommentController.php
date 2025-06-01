@@ -33,7 +33,7 @@ class CommentController extends Controller
         $validated['ticket_id'] = $ticket_id;
         $validated['user_type'] = get_class($user);
 
-        $data = $this->commentService->staffCommentTicket($validated);
+        $data = $this->commentService->createComment($validated);
 
         return response()->success(
             new CommentResource($data),

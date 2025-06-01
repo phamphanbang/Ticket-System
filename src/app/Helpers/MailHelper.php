@@ -1,12 +1,10 @@
 <?php
 
-namespace App\Services;
+namespace App\Helpers;
 
-use App\Models\TicketMail;
-use Illuminate\Support\Facades\Log;
 use Webklex\PHPIMAP\Message;
 
-class TicketMailService
+class MailHelper
 {
   public function processIMAPEmail(Message $message)
   {
@@ -26,23 +24,13 @@ class TicketMailService
     $data['parse_email'] = $message->getTextBody() ?: strip_tags($data['htmlBody']);
     return $data;
   }
-  public function createTicketMail($data)
+
+  function extractReplyFromEmail($body)
   {
-    $mail = TicketMail::create($data);
-
-    return $mail;
-  }
-
-  public function findByMessageId($messageId)
-  {
-    return TicketMail::where('message_id', $messageId)->first();
-  }
-
-  function extractReplyFromEmail($body) {
     $pattern = '/^On .+ wrote:|^From:|^Vào .*? viết:/mi';
 
     $parts = preg_split($pattern, $body, 2);
 
     return trim($parts[0]);
-}
+  }
 }
