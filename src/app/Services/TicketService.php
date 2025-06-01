@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Constants\ExternalStatus;
 use App\Constants\InternalStatus;
 use App\Mail\ClientTicketCreated;
+use App\Mail\ClientTicketProcessing;
 use App\Models\Ticket;
 use App\Models\TicketAuditLog;
 use App\Validators\TicketValidator;
@@ -25,38 +26,38 @@ class TicketService
     $query = Ticket::query()->with(['client', 'participants.user']);
 
     if (isset($filters['search'])) {
-        $query->where(function ($q) use ($filters) {
-            $q->where('subject', 'like', "%{$filters['search']}%")
-              ->orWhere('description', 'like', "%{$filters['search']}%")
-              ->orWhereHas('client', function ($q) use ($filters) {
-                  $q->where('name', 'like', "%{$filters['search']}%")
-                    ->orWhere('email', 'like', "%{$filters['search']}%");
-              });
-        });
+      $query->where(function ($q) use ($filters) {
+        $q->where('subject', 'like', "%{$filters['search']}%")
+          ->orWhere('description', 'like', "%{$filters['search']}%")
+          ->orWhereHas('client', function ($q) use ($filters) {
+            $q->where('name', 'like', "%{$filters['search']}%")
+              ->orWhere('email', 'like', "%{$filters['search']}%");
+          });
+      });
     }
 
     if (isset($filters['internal_status'])) {
-        $query->where('internal_status', $filters['internal_status']);
+      $query->where('internal_status', $filters['internal_status']);
     }
 
     if (isset($filters['external_status'])) {
-        $query->where('external_status', $filters['external_status']);
+      $query->where('external_status', $filters['external_status']);
     }
 
     if (isset($filters['created_by'])) {
-        $query->where('created_by', $filters['created_by']);
+      $query->where('created_by', $filters['created_by']);
     }
 
     if (isset($filters['sort_by'])) {
-        $direction = $filters['sort_direction'] ?? 'desc';
-        $query->orderBy($filters['sort_by'], $direction);
+      $direction = $filters['sort_direction'] ?? 'desc';
+      $query->orderBy($filters['sort_by'], $direction);
     } else {
-        $query->latest();
+      $query->latest();
     }
 
     $perPage = $filters['per_page'] ?? 15;
     $page = $filters['page'] ?? 1;
-    
+
     $paginator = $query->paginate($perPage, ['*'], 'page', $page);
 
     return [
@@ -103,6 +104,55 @@ class TicketService
     return $ticket;
   }
 
+  /**
+   * Check and update ticket status from New/Received to In Analysis/Processing
+   * 
+   * @param Ticket $ticket
+   * @return Ticket
+   */
+  public function checkAndUpdateInitialStatus($ticket_id): Ticket
+  {
+    $ticket = Ticket::findOrFail($ticket_id);
+
+    if (
+      $ticket->internal_status !== InternalStatus::NEW->value ||
+      $ticket->external_status !== ExternalStatus::RECEIVED->value
+    ) {
+      return $ticket;
+    }
+    $oldInternalStatus = $ticket->internal_status;
+    $oldExternalStatus = $ticket->external_status;
+
+    $ticket->update([
+      'internal_status' => InternalStatus::IN_ANALYSIS->value,
+      'external_status' => ExternalStatus::PROCESSING->value
+    ]);
+
+    // Create audit log for status change
+    $auditLog = TicketAuditLog::create([
+      'ticket_id' => $ticket->id,
+      'changed_by' => auth()->id(),
+      'field_changed' => 'status',
+      'old_value' => json_encode([
+        'internal_status' => $oldInternalStatus,
+        'external_status' => $oldExternalStatus
+      ]),
+      'new_value' => json_encode([
+        'internal_status' => $ticket->internal_status,
+        'external_status' => $ticket->external_status
+      ]),
+      'change_type' => 'update',
+      'reason' => 'Initial ticket status updated to Processing',
+      'created_at' => now()
+    ]);
+
+    Mail::to($ticket->client->email)
+      ->queue(new ClientTicketProcessing($ticket));
+
+
+    return $ticket;
+  }
+
   public function getTicketById($id)
   {
     $ticket = Ticket::where('id', $id)->first();
@@ -110,5 +160,4 @@ class TicketService
 
     return $ticket->load(['client']);
   }
-
 }

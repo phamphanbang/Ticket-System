@@ -29,7 +29,7 @@ class TicketParticipantRemoved extends Mailable
     public function content(): Content
     {
         return new Content(
-            view: 'emails.ticket-participant-removed',
+            view: 'mails.participants.ticket-participant-removed',
             with: [
                 'participant' => $this->participant,
                 'ticket' => $this->participant->ticket,

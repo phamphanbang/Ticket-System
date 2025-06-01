@@ -10,6 +10,8 @@ class TicketAuditLog extends Model
 {
     use HasUuids;
 
+    public $timestamps = false;
+
     /**
      * The attributes that are mass assignable.
      *
