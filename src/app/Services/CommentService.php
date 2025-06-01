@@ -5,7 +5,7 @@ namespace App\Services;
 use App\Constants\PaginateConstant;
 use App\Constants\UserRoles;
 use App\Mail\ClientStaffCreateComment;
-use App\Models\Comment;
+use App\Models\TicketComment;
 use App\Validators\TicketValidator;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -13,7 +13,6 @@ use Illuminate\Support\Facades\Mail;
 class CommentService
 {
   public function __construct(
-    protected TicketMailService $ticketMailService,
     protected TicketService $ticketService
   ) {
     // Constructor to inject TicketMailService dependency
@@ -23,7 +22,7 @@ class CommentService
   {
     $isPaginate = $request->boolean('isPaginate', true);
 
-    $query = Comment::query()->where('ticket_id', $ticket_id)->with('user');
+    $query = TicketComment::query()->where('ticket_id', $ticket_id)->with('user');
 
     if ((boolean) $isPaginate) {
       $perPage = $request->input('perPage', PaginateConstant::DEFAULT_PER_PAGE->value);
@@ -65,24 +64,8 @@ class CommentService
 
   public function createComment($data)
   {
-    $comment = Comment::create($data);
+    $comment = TicketComment::create($data);
 
     return $comment;
-  }
-
-  public function staffCommentTicket($comment)
-  {
-    $ticket = $this->ticketService->getTicketById($comment['ticket_id']);
-    if(auth()->user()->role != UserRoles::ADMIN->value) {
-      TicketValidator::checkStaffIsAssignedToTicket($ticket,$comment['user_id']);
-    }
-
-    $client = $ticket->client;
-    $comment = $this->createComment($comment);
-
-    Mail::to($client->email)->queue(new ClientStaffCreateComment($comment, $ticket, $client));
-
-    return $comment;
-    
   }
 }

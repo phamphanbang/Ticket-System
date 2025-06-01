@@ -31,7 +31,6 @@ class TicketService
 {
   public function __construct(
     protected ClientService $clientService,
-    protected TicketMailService $ticketMailService
   ) {
     // Constructor to inject ClientService dependency
 
@@ -176,13 +175,13 @@ class TicketService
   //   return $ticket;
   // }
 
-  // public function getTicketById($id)
-  // {
-  //   $ticket = Ticket::where('id', $id)->first();
-  //   TicketValidator::checkTicketExists($ticket);
+  public function getTicketById($id)
+  {
+    $ticket = Ticket::where('id', $id)->first();
+    TicketValidator::checkTicketExists($ticket);
 
-  //   return $ticket->load(['assignTo', 'client']);
-  // }
+    return $ticket->load(['client']);
+  }
 
   // public function createTicketFromMail($data, Client $ticket_client)
   // {

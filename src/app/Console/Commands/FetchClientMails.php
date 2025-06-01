@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Constants\TicketStatus;
+use App\Helpers\MailHelper;
 use App\Models\Client as ModelsClient;
 use App\Models\ReceivedEmail;
 use App\Models\Ticket;
@@ -19,7 +20,7 @@ class FetchClientMails extends Command
 {
     public function __construct(
         protected ClientService $clientService,
-        protected TicketMailService $ticketMailService,
+        protected MailHelper $mailHelper,
         protected TicketService $ticketService,
         protected CommentService $commentService
     ) {
@@ -56,7 +57,7 @@ class FetchClientMails extends Command
             $message->setFlag('Seen');
             // $check = $this->ticketMailService->findByMessageId($message->getMessageId());
             // if ($check) continue;
-            $data = $this->ticketMailService->processIMAPEmail($message);
+            $data = $this->mailHelper->processIMAPEmail($message);
 
             if (!$data['in_reply_to'] && !str_contains($data['subject'], '[ESReport]')) {
                 continue;
