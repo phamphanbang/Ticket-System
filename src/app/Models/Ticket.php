@@ -10,6 +10,9 @@ use Illuminate\Database\Eloquent\Model;
 class Ticket extends Model
 {
     use HasUuids;
+
+    protected $keyType = 'string';
+    public $incrementing = false;
     
     protected $fillable = [
         'subject',
@@ -20,8 +23,6 @@ class Ticket extends Model
     ];
 
     protected $casts = [
-        'internal_status' => InternalStatus::class,
-        'external_status' => ExternalStatus::class,
         'created_at' => 'datetime',
         'updated_at' => 'datetime'
     ];

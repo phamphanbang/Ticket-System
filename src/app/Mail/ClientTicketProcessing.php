@@ -2,37 +2,35 @@
 
 namespace App\Mail;
 
-use App\Models\TicketParticipant;
+use App\Models\Ticket;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class TicketParticipantAdded extends Mailable
+class ClientTicketProcessing extends Mailable
 {
     use Queueable, SerializesModels;
 
     public function __construct(
-        public TicketParticipant $participant
+        public Ticket $ticket
     ) {}
 
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: "You've been added to a ticket"
+            subject: "Your ticket is being processed"
         );
     }
 
     public function content(): Content
     {
         return new Content(
-            view: 'mails.participants.ticket-participant-added',
+            view: 'mails.clients.ticket_is_processing',
             with: [
-                'participant' => $this->participant,
-                'ticket' => $this->participant->ticket,
-                'user' => $this->participant->user,
-                'invitedBy' => $this->participant->invitedBy,
+                'ticket' => $this->ticket,
+                'client' => $this->ticket->client,
             ]
         );
     }
