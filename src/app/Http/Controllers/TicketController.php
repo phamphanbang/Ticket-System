@@ -25,6 +25,27 @@ class TicketController extends Controller
         $this->ticketService = $ticketService;
     }
 
+    public function index(Request $request)
+    {
+        $filters = $request->only([
+            'search',
+            'internal_status',
+            'external_status',
+            'created_by',
+            'sort_by',
+            'sort_direction',
+            'per_page',
+            'page'
+        ]);
+
+        $result = $this->ticketService->index($filters);
+
+        return $this->success([
+            'items' => TicketResource::collection($result['items']),
+            'pagination' => $result['pagination']
+        ], 'Tickets retrieved successfully');
+    }
+
     public function store(CreateTicketRequest $request)
     {
         $validated = $request->validated();

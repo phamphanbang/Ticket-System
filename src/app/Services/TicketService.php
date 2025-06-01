@@ -9,6 +9,7 @@ use App\Models\Ticket;
 use App\Models\TicketAuditLog;
 use App\Validators\TicketValidator;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class TicketService
 {
@@ -17,6 +18,55 @@ class TicketService
   ) {
     // Constructor to inject ClientService dependency
 
+  }
+
+  public function index(array $filters = []): array
+  {
+    $query = Ticket::query()->with(['client', 'participants.user']);
+
+    if (isset($filters['search'])) {
+        $query->where(function ($q) use ($filters) {
+            $q->where('subject', 'like', "%{$filters['search']}%")
+              ->orWhere('description', 'like', "%{$filters['search']}%")
+              ->orWhereHas('client', function ($q) use ($filters) {
+                  $q->where('name', 'like', "%{$filters['search']}%")
+                    ->orWhere('email', 'like', "%{$filters['search']}%");
+              });
+        });
+    }
+
+    if (isset($filters['internal_status'])) {
+        $query->where('internal_status', $filters['internal_status']);
+    }
+
+    if (isset($filters['external_status'])) {
+        $query->where('external_status', $filters['external_status']);
+    }
+
+    if (isset($filters['created_by'])) {
+        $query->where('created_by', $filters['created_by']);
+    }
+
+    if (isset($filters['sort_by'])) {
+        $direction = $filters['sort_direction'] ?? 'desc';
+        $query->orderBy($filters['sort_by'], $direction);
+    } else {
+        $query->latest();
+    }
+
+    $perPage = $filters['per_page'] ?? 15;
+    $page = $filters['page'] ?? 1;
+    
+    $paginator = $query->paginate($perPage, ['*'], 'page', $page);
+
+    return [
+      'items' => $paginator->items(),
+      'pagination' => [
+        'page' => $paginator->currentPage(),
+        'perPage' => $paginator->perPage(),
+        'total' => $paginator->total(),
+      ]
+    ];
   }
 
   public function store(array $data)
