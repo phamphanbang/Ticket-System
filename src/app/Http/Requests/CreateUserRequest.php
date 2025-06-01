@@ -8,7 +8,7 @@ class CreateUserRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return auth()->check() && auth()->user()->isAdmin();
+        return auth()->check() && auth()->user()->hasRole('admin');
     }
 
     public function rules(): array

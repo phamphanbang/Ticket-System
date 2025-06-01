@@ -11,7 +11,7 @@ Route::post('auth/login', [AuthController::class, 'login']);
 Route::middleware('auth:sanctum')->post('auth/logout', [AuthController::class, 'logout']);
 
 Route::middleware('auth:sanctum')->group(function () {
-  // Route::apiResource('users', UserController::class);
+  Route::apiResource('users', UserController::class);
 
   Route::apiResource('tickets', TicketController::class);
   Route::get('/tickets/{id}/participants', [TicketParticipantController::class, 'index']);
