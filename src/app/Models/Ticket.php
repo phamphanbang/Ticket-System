@@ -33,12 +33,12 @@ class Ticket extends Model
 
     public function comments()
     {
-        return $this->hasMany(Comment::class);
+        return $this->hasMany(TicketComment::class);
     }
 
     public function logs()
     {
-        return $this->hasMany(TicketLog::class);
+        return $this->hasMany(TicketAuditLog::class);
     }
 
     public function receivedEmails()

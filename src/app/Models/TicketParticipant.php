@@ -62,6 +62,12 @@ class TicketParticipant extends Model
     {
         return $this->belongsTo(User::class);
     }
+    /**
+     * Indicates if the model should be timestamped.
+     *
+     * @var bool
+     */
+    public $timestamps = false;
 
     /**
      * Get the user who invited this participant.
