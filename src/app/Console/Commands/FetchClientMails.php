@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Constants\TicketStatus;
 use App\Models\Client as ModelsClient;
+use App\Models\ReceivedEmail;
 use App\Models\Ticket;
 use App\Services\ClientService;
 use App\Services\CommentService;
@@ -43,6 +44,7 @@ class FetchClientMails extends Command
      */
     public function handle()
     {
+        $this->info('Fetching emails...');
         Log::info('YourCommand is running at ' . now());
         $IMAP_client = Client::account('default');
         $IMAP_client->connect();
@@ -52,40 +54,54 @@ class FetchClientMails extends Command
 
         foreach ($messages as $message) {
             $message->setFlag('Seen');
-            $check = $this->ticketMailService->findByMessageId($message->getMessageId());
-            if ($check) continue;
+            // $check = $this->ticketMailService->findByMessageId($message->getMessageId());
+            // if ($check) continue;
             $data = $this->ticketMailService->processIMAPEmail($message);
 
             if (!$data['in_reply_to'] && !str_contains($data['subject'], '[ESReport]')) {
                 continue;
             }
 
-            $ticket_client = $this->clientService->createClient([
-                'name' => $data['from_name'],
-                'email' => $data['from_email'],
-            ]);
-
             if (!$data['in_reply_to']) {
-                $ticket = $this->ticketService->createTicketFromMail($data, $ticket_client);
+                $ticket_data = [
+                    'client_email' => $data['from_email'],
+                    'subject' => $data['subject'],
+                    'description' => $data['body'],
+                ];
+                $ticket = $this->ticketService->store($ticket_data);
+                $ticket->receivedEmails()->create([
+                    'message_id' => $data['message_id'],
+                    'in_reply_to' => $data['in_reply_to'],
+                    'from_email' => $data['from_email'],
+                    'to_email' => $data['to_email'],
+                    'subject' => $data['subject'],
+                    'body' => $data['body'],
+                    'attachments' => null,
+                    'type' => 'new_ticket',
+                    'status' => 'pending',
+                    'received_at' => Carbon::now(),
+                ]);
+                $this->info('Ticket' . $ticket->subject . ' created successfully.');
+                Log::info('fetch ticket ' . $ticket->subject);
                 continue;
             }
 
-            preg_match('/Ticket#\[(.*?)\]/', $data['subject'], $matches);
+            // preg_match('/Ticket#\[(.*?)\]/', $data['subject'], $matches);
 
-            $ticketId = $matches[1] ?? null;
-            $ticket = $this->ticketService->getTicketById($ticketId);
-            if (!$ticket) continue;
-            $mail = $this->ticketMailService->createTicketMail([
-                ...$data,
-                'ticket_id' => $ticket->id,
-            ]);
-            $comment = $this->commentService->createComment([
-                'ticket_id' => $ticket->id,
-                'user_id' => $ticket_client->id,
-                'user_type' => ModelsClient::class,
-                'mail_id' => $mail->id,
-                'body' => $data['body'],
-            ]);
+            // $ticketId = $matches[1] ?? null;
+            // $ticket = $this->ticketService->getTicketById($ticketId);
+            // if (!$ticket) continue;
+            // $mail = $this->ticketMailService->createTicketMail([
+            //     ...$data,
+            //     'ticket_id' => $ticket->id,
+            // ]);
+            // $comment = $this->commentService->createComment([
+            //     'ticket_id' => $ticket->id,
+            //     'user_id' => $ticket_client->id,
+            //     'user_type' => ModelsClient::class,
+            //     'mail_id' => $mail->id,
+            //     'body' => $data['body'],
+            // ]);
 
             $message->setFlag('Seen');
         }

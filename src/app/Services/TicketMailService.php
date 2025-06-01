@@ -17,6 +17,7 @@ class TicketMailService
     $data['raw_email'] = $message->getRawMessage();
     $data['from_email'] = $from->mail;
     $data['from_name'] = $from->personal ?: 'Unknown Client';
+    $data['to_email'] = $message->getTo()[0]->mail;
     $data['subject'] = $message->getSubject();
     $data['htmlBody'] = $message->getHTMLBody();
 

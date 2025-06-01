@@ -187,21 +187,13 @@ class TicketService
   // public function createTicketFromMail($data, Client $ticket_client)
   // {
   //   $ticket = Ticket::create([
-  //     'title' => $data['subject'],
+  //     'subject' => $data['subject'],
   //     'description' => $data['body'],
   //     'client_id' => $ticket_client->id,
-  //     'status' => TicketStatus::New->value,
-  //     'deadline' => now()->addDays(7),
+  //     'internal_status' => InternalStatus::NEW->value,
+  //     'external_status' => ExternalStatus::RECEIVED->value
   //   ]);
 
-  //   $mail = $this->ticketMailService->createTicketMail([
-  //     ...$data,
-  //     'ticket_id' => $ticket->id,
-  //   ]);
-
-  //   $ticket->created_mail_id = $mail->id;
-  //   $ticket->save();
-
-  //   return $ticket->load(['assignTo', 'client']);
+  //   return $ticket->load(['client']);
   // }
 }

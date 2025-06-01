@@ -41,6 +41,11 @@ class Ticket extends Model
         return $this->hasMany(TicketLog::class);
     }
 
+    public function receivedEmails()
+    {
+        return $this->hasMany(ReceivedEmail::class);
+    }
+
     public function scopeWithInternalStatus($query, $status)
     {
         return $query->where('internal_status', $status);
