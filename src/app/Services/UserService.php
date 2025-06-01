@@ -3,9 +3,7 @@
 namespace App\Services;
 
 use App\Constants\PaginateConstant;
-use App\Constants\UserRoles;
 use App\Http\Resources\UserResource;
-use App\Models\Role;
 use App\Models\User;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
@@ -22,8 +20,8 @@ class UserService
     $query = User::query();
     $query = $query->search($search);
 
-    if (UserRoles::tryFrom($role)) {
-      $query = $query->where('role', $role);
+    if ($role) {
+      $query = $query->role($role);
     }
 
     if ((boolean) $isPaginate) {
@@ -38,14 +36,7 @@ class UserService
     }
 
     $users = $query->get()->map(function ($user) {
-      return [
-        'id' => $user->id,
-        'name' => $user->name,
-        'email' => $user->email,
-        'role' => $user->role,
-        'created_at' => $user->created_at,
-        'updated_at' => $user->updated_at
-      ];
+      return new UserResource($user);
     });
 
     return $isPaginate ? [
@@ -60,14 +51,13 @@ class UserService
     ];
   }
 
-
   public function getUserById($id)
   {
     $user = User::find($id);
     if (!$user) {
       throw new ModelNotFoundException(__('messages.model_not_found', ['model' => 'User']));
     }
-    return $user;
+    return new UserResource($user);
   }
 
   public function createUser($request)
@@ -75,22 +65,34 @@ class UserService
     $user = User::create([
       'name' => $request['name'],
       'email' => $request['email'],
-      'role' => $request['role'],
       'password' => Hash::make($request['password']),
     ]);
-    return $user;
+
+    if (isset($request['role'])) {
+      $user->assignRole($request['role']);
+    }
+
+    return new UserResource($user);
   }
 
   public function updateUser($id, $data)
   {
-    $user = $this->getUserById($id);
+    $user = User::findOrFail($id);
+
+    if (isset($data['role'])) {
+      $role = $data['role'];
+      unset($data['role']);
+      $user->syncRoles([$role]);
+    }
+
     $user->update($data);
     return new UserResource($user);
   }
 
   public function deleteUser($id)
   {
-    $user = $this->getUserById($id);
+    $user = User::findOrFail($id);
+    $user->roles()->detach();
     $user->delete();
     return null;
   }
