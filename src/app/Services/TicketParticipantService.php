@@ -3,10 +3,13 @@
 namespace App\Services;
 
 use App\Http\Resources\TicketParticipantResource;
+use App\Mail\TicketParticipantAdded;
+use App\Mail\TicketParticipantRemoved;
 use App\Models\Ticket;
 use App\Models\TicketParticipant;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Mail;
 use Symfony\Component\HttpFoundation\Response;
 
 use Illuminate\Support\Facades\DB;
@@ -59,16 +62,21 @@ class TicketParticipantService
         'invited_by_user_id' => $invitedByUserId,
       ]);
 
-      return new TicketParticipantResource($existingParticipant->load(['user', 'invitedBy']));
+      $participant = $existingParticipant->load(['user', 'invitedBy']);
+    } else {
+      $participant = TicketParticipant::create([
+        'ticket_id' => $ticketId,
+        'user_id' => $userId,
+        'invited_by_user_id' => $invitedByUserId,
+        'role_in_ticket' => $role,
+        'joined_at' => now(),
+      ])->load(['user', 'invitedBy']);
     }
 
-    $participant = TicketParticipant::create([
-      'ticket_id' => $ticketId,
-      'user_id' => $userId,
-      'invited_by_user_id' => $invitedByUserId,
-      'role_in_ticket' => $role,
-      'joined_at' => now(),
-    ])->load(['user', 'invitedBy']);
+    // Send email notification
+    Mail::to($participant->user->email)
+      ->queue(new TicketParticipantAdded($participant));
+
     return new TicketParticipantResource($participant);
   }
 
@@ -108,8 +116,16 @@ class TicketParticipantService
       }
     }
 
-    return $participant->update([
+    $result = $participant->update([
       'left_at' => now(),
     ]);
+
+    if ($result) {
+      // Send email notification
+      Mail::to($participant->user->email)
+        ->queue(new TicketParticipantRemoved($participant, $removedByUserId));
+    }
+
+    return $result;
   }
 }

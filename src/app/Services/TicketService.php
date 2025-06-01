@@ -4,28 +4,12 @@ namespace App\Services;
 
 use App\Constants\ExternalStatus;
 use App\Constants\InternalStatus;
-use App\Constants\PaginateConstant;
-use App\Constants\TicketStatus;
-use App\Constants\UserRoles;
-use App\Exceptions\InvalidTicketAssignmentException;
-use App\Http\Resources\TicketResource;
-use App\Mail\ClientAdminUpdateTicket;
-use App\Mail\ClientStaffDelayTicket;
 use App\Mail\ClientTicketCreated;
-use App\Mail\ClientTicketIsClosed;
-use App\Mail\ClientTicketIsConfirmed;
-use App\Mail\ClientTicketIsResolved;
-use App\Mail\StaffAssignedToNewTicket;
-use App\Mail\StaffClientRejectTicket;
-use App\Mail\StaffTicketIsClosed;
-use App\Mail\StaffUnassignedToTicket;
-use App\Models\Client;
 use App\Models\Ticket;
-use App\Models\User;
+use App\Models\TicketAuditLog;
 use App\Validators\TicketValidator;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class TicketService
 {
@@ -34,6 +18,55 @@ class TicketService
   ) {
     // Constructor to inject ClientService dependency
 
+  }
+
+  public function index(array $filters = []): array
+  {
+    $query = Ticket::query()->with(['client', 'participants.user']);
+
+    if (isset($filters['search'])) {
+        $query->where(function ($q) use ($filters) {
+            $q->where('subject', 'like', "%{$filters['search']}%")
+              ->orWhere('description', 'like', "%{$filters['search']}%")
+              ->orWhereHas('client', function ($q) use ($filters) {
+                  $q->where('name', 'like', "%{$filters['search']}%")
+                    ->orWhere('email', 'like', "%{$filters['search']}%");
+              });
+        });
+    }
+
+    if (isset($filters['internal_status'])) {
+        $query->where('internal_status', $filters['internal_status']);
+    }
+
+    if (isset($filters['external_status'])) {
+        $query->where('external_status', $filters['external_status']);
+    }
+
+    if (isset($filters['created_by'])) {
+        $query->where('created_by', $filters['created_by']);
+    }
+
+    if (isset($filters['sort_by'])) {
+        $direction = $filters['sort_direction'] ?? 'desc';
+        $query->orderBy($filters['sort_by'], $direction);
+    } else {
+        $query->latest();
+    }
+
+    $perPage = $filters['per_page'] ?? 15;
+    $page = $filters['page'] ?? 1;
+    
+    $paginator = $query->paginate($perPage, ['*'], 'page', $page);
+
+    return [
+      'items' => $paginator->items(),
+      'pagination' => [
+        'page' => $paginator->currentPage(),
+        'perPage' => $paginator->perPage(),
+        'total' => $paginator->total(),
+      ]
+    ];
   }
 
   public function store(array $data)
@@ -49,131 +82,26 @@ class TicketService
 
     $ticket = Ticket::create($data);
 
+    // Create audit log for ticket creation
+    TicketAuditLog::create([
+      'ticket_id' => $ticket->id,
+      'changed_by' => $data['created_by'] ?? auth()->id(),
+      'field_changed' => 'ticket_created',
+      'old_value' => null,
+      'new_value' => json_encode([
+        'title' => $ticket->title,
+        'internal_status' => $ticket->internal_status,
+        'external_status' => $ticket->external_status,
+      ]),
+      'change_type' => 'update',
+      'reason' => 'Ticket created',
+    ]);
+
     Mail::to($ticket->client->email)
       ->queue(new ClientTicketCreated($ticket));
 
     return $ticket;
   }
-
-  // public function update($data, $id)
-  // {
-  //   $ticket = Ticket::where('id', $id)->first();
-
-  //   TicketValidator::checkTicketExists($ticket);
-  //   TicketValidator::checkTicketStatus($ticket, TicketStatus::New->value);
-
-  //   $oldTitle = $ticket->title;
-  //   $oldDescription = $ticket->description;
-  //   $oldAssignId = $ticket->assign_to;
-  //   $newAssignId = $data['assign_to'] ?? null;
-
-  //   $ticket->update($data);
-
-  //   $oldUser = $oldAssignId ? User::where('id',$oldAssignId)->first() : null;
-  //   $newUser = $newAssignId ? User::where('id',$newAssignId)->first() : null;
-
-  //   if (is_null($oldAssignId) && $newUser) {
-  //     Mail::to($newUser->email)
-  //       ->queue(new StaffAssignedToNewTicket($ticket));
-  //   }
-
-  //   if ($oldUser && is_null($newAssignId)) {
-  //     Mail::to($oldUser->email)->queue(new StaffUnassignedToTicket($ticket, $oldUser));
-  //   }
-  //   if ($oldUser && $newUser && $oldAssignId !== $newAssignId) {
-  //     Mail::to($newUser->email)->queue(new StaffAssignedToNewTicket($ticket));
-  //     Mail::to($oldUser->email)->queue(new StaffUnassignedToTicket($ticket, $oldUser));
-  //   }
-  //   if ($oldAssignId !== $newAssignId || $oldTitle !== $ticket->title || $oldDescription !== $ticket->description) {
-  //     Mail::to($ticket->client->email)->queue(new ClientAdminUpdateTicket($ticket));
-  //   }
-  //   return $ticket;
-  // }
-
-  // public function staffConfirmTicket($data, $id)
-  // {
-  //   $user = auth()->user();
-  //   $ticket = Ticket::where('id', $id)->first();
-
-  //   TicketValidator::checkTicketExists($ticket);
-  //   TicketValidator::checkTicketStatus($ticket, TicketStatus::New->value);
-  //   TicketValidator::checkStaffIsAssignedToTicket($ticket, $user->id);
-
-  //   $ticket->update($data);
-
-  //   Mail::to($ticket->client->email)->queue(new ClientTicketIsConfirmed($ticket));
-
-  //   return $ticket;
-  // }
-
-  // public function staffResolveTicket($data, $id)
-  // {
-  //   $user = auth()->user();
-  //   $ticket = Ticket::where('id', $id)->first();
-
-  //   TicketValidator::checkTicketExists($ticket);
-  //   TicketValidator::checkTicketStatus($ticket, TicketStatus::InProgress->value);
-  //   TicketValidator::checkStaffIsAssignedToTicket($ticket, $user->id);
-
-  //   $ticket->update($data);
-
-  //   Mail::to($ticket->client->email)->queue(new ClientTicketIsResolved($ticket));
-
-  //   return $ticket;
-  // }
-
-  // public function staffDelayTicket($data, $id)
-  // {
-  //   $user = auth()->user();
-  //   $ticket = Ticket::where('id', $id)->first();
-
-  //   TicketValidator::checkTicketExists($ticket);
-  //   TicketValidator::checkTicketStatus($ticket, TicketStatus::InProgress->value);
-  //   TicketValidator::checkStaffIsAssignedToTicket($ticket, $user->id);
-
-  //   $ticket->update($data);
-
-  //   Mail::to($ticket->client->email)->queue(new ClientStaffDelayTicket($ticket));
-
-  //   return $ticket;
-  // }
-
-  // public function clientRejectTicket($data, $id)
-  // {
-  //   $ticket = Ticket::where('id', $id)->first();
-  //   TicketValidator::checkTicketExists($ticket);
-  //   TicketValidator::checkTicketStatus($ticket, TicketStatus::Resolved->value);
-
-  //   $ticket->update($data);
-
-  //   Mail::to($ticket->assignTo->email)->queue(new StaffClientRejectTicket($ticket));
-
-  //   return $ticket;
-  // }
-
-  // public function closeTicket($data, $id)
-  // {
-  //   $ticket = Ticket::where('id', $id)->first();
-  //   $user = auth()->user();
-
-  //   TicketValidator::checkTicketExists($ticket);
-  //   if (!$user) {
-  //     TicketValidator::checkTicketStatus($ticket, TicketStatus::Resolved->value);
-  //   }
-  //   if ($user && $user->isStaff()) {
-  //     throw new InvalidTicketAssignmentException(__('error.you_are_not_admin'));
-  //   }
-  //   $ticket->update($data);
-  //   if ($ticket->assign_to) {
-  //     Mail::to($ticket->assignTo->email)->queue(new StaffTicketIsClosed($ticket));
-  //   }
-
-  //   if ($user) {
-  //     Mail::to($ticket->client->email)->queue(new ClientTicketIsClosed($ticket));
-  //   }
-
-  //   return $ticket;
-  // }
 
   public function getTicketById($id)
   {
@@ -183,16 +111,4 @@ class TicketService
     return $ticket->load(['client']);
   }
 
-  // public function createTicketFromMail($data, Client $ticket_client)
-  // {
-  //   $ticket = Ticket::create([
-  //     'subject' => $data['subject'],
-  //     'description' => $data['body'],
-  //     'client_id' => $ticket_client->id,
-  //     'internal_status' => InternalStatus::NEW->value,
-  //     'external_status' => ExternalStatus::RECEIVED->value
-  //   ]);
-
-  //   return $ticket->load(['client']);
-  // }
 }
