@@ -32,7 +32,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->render(
             function (Exception $e, Request $request) {
                 $message = $e->getMessage();
-                $code = $e->getCode() != 0 ? Response::HTTP_INTERNAL_SERVER_ERROR : $e->getCode();
+                $code = $e->getCode() == 0 ? Response::HTTP_INTERNAL_SERVER_ERROR : $e->getCode();
                 $errors = null;
                 // dd($e);
                 if ($e instanceof AuthenticationException) {

@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CommentController;
+use App\Http\Controllers\TicketParticipantController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\UserController;
 
@@ -13,6 +14,9 @@ Route::middleware('auth:sanctum')->group(function () {
   // Route::apiResource('users', UserController::class);
 
   Route::apiResource('tickets', TicketController::class);
+  Route::get('/tickets/{id}/participants', [TicketParticipantController::class, 'index']);
+  Route::post('/tickets/{id}/participants', [TicketParticipantController::class, 'store']);
+  Route::delete('/participants/{id}', [TicketParticipantController::class, 'destroy']);
   // Route::get('tickets', [TicketController::class, 'index'])->name('tickets.index');
   // Route::get('tickets/{ticket}', [TicketController::class, 'show'])->name('admin.show.ticket');
   // Route::put('tickets/{ticket}', [TicketController::class, 'update'])->name('admin.update.ticket');
