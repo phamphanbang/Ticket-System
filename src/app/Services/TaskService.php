@@ -365,8 +365,8 @@ class TaskService
       throw new Exception('Only assigned staff can start task execution', Response::HTTP_FORBIDDEN);
     }
 
-    if ($task->execution_status !== ExecutionStatus::NOT_STARTED->value) {
-      throw new Exception('Task must be in Not Started status to begin execution', Response::HTTP_BAD_REQUEST);
+    if (!in_array($task->execution_status, [ExecutionStatus::NOT_STARTED->value, ExecutionStatus::BLOCKED->value])) {
+      throw new Exception('Task must be in Not Started or Blocked status to begin execution', Response::HTTP_BAD_REQUEST);
     }
 
     $oldExecutionStatus = $task->execution_status;
@@ -381,6 +381,42 @@ class TaskService
       ['execution_status' => $oldExecutionStatus],
       ['execution_status' => $task->execution_status],
       'Task execution started'
+    );
+
+    return $task->fresh();
+  }
+
+  public function blockTask(string $id, string $reason): Task
+  {
+    $task = Task::findOrFail($id);
+    $user = auth()->user();
+
+    if ($task->assigned_to !== $user->id) {
+      throw new Exception('Only assigned staff can block this task', Response::HTTP_FORBIDDEN);
+    }
+
+    if (!in_array($task->execution_status, [
+      ExecutionStatus::NOT_STARTED->value,
+      ExecutionStatus::IN_PROGRESS->value
+    ])) {
+      throw new Exception('Task must be Not Started or In Progress to be blocked', Response::HTTP_BAD_REQUEST);
+    }
+
+    $oldExecutionStatus = $task->execution_status;
+    
+    $task->update([
+      'execution_status' => ExecutionStatus::BLOCKED->value
+    ]);
+
+    $this->createAuditLog(
+      $task->id,
+      'execution_status',
+      ['execution_status' => $oldExecutionStatus],
+      [
+        'execution_status' => $task->execution_status,
+        'reason' => $reason
+      ],
+      'Task blocked: ' . $reason
     );
 
     return $task->fresh();

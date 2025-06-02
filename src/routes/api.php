@@ -31,6 +31,7 @@ Route::middleware(['auth:sanctum','api'])->group(function () {
   Route::post('tasks/{id}/mark-estimate-needs-revision', [TaskController::class, 'needsRevision']);
   Route::post('tasks/{id}/mark-estimate-approved', [TaskController::class, 'estimateApproved']);
   Route::post('tasks/{id}/start-execution', [TaskController::class, 'startExecution']);
+  Route::post('tasks/{id}/block', [TaskController::class, 'blockTask']);
 
   Route::get('/tickets/{id}/participants', [TicketParticipantController::class, 'index']);
   Route::post('/tickets/{id}/participants', [TicketParticipantController::class, 'store']);

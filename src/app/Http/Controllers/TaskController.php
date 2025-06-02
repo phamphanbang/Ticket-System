@@ -87,6 +87,16 @@ class TaskController extends Controller
         return $this->success($task, 'Task execution started successfully');
     }
 
+    public function blockTask(Request $request, string $id): JsonResponse
+    {
+        $validated = $request->validate([
+            'reason' => 'required|string|max:255'
+        ]);
+
+        $task = $this->taskService->blockTask($id, $validated['reason']);
+        return $this->success($task, 'Task blocked successfully');
+    }
+
     public function destroy(string $id): JsonResponse
     {
         $this->taskService->destroy($id);
