@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Constants\EstimationStatus;
 use App\Constants\InternalStatus;
 use App\Mail\TaskAssigned;
+use App\Mail\TaskUnassigned;
 use App\Models\Task;
 use App\Models\TaskAuditLog;
 use App\Models\Ticket;
@@ -125,13 +126,26 @@ class TaskService
     if (!$staff->hasRole('staff')) {
         throw new \Exception('User must have staff role to be assigned to a task', Response::HTTP_BAD_REQUEST);
     }
+
+    $oldStaffId = $task->assigned_to;
+    
+    // Skip notifications if same staff being reassigned
+    if ($oldStaffId === $staffId) {
+      return $task;
+    }
+    
+    $oldStaff = $oldStaffId ? User::find($oldStaffId) : null;
     
     $task->update([
       'assigned_to' => $staffId,
       'estimation_status' => EstimationStatus::ASSIGNED->value
     ]);
 
-    Mail::to($task->assignedUser->email)->queue(new TaskAssigned($task));
+    Mail::to($staff->email)->queue(new TaskAssigned($task));
+
+    if ($oldStaff) {
+      Mail::to($oldStaff->email)->queue(new TaskUnassigned($task)); 
+    }
 
     return $task->fresh();
   }
