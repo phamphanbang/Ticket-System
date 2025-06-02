@@ -8,12 +8,16 @@ use App\Mail\ClientTicketCreated;
 use App\Mail\ClientTicketProcessing;
 use App\Models\Ticket;
 use App\Models\TicketAuditLog;
+use App\Traits\HasAuditLog;
 use App\Validators\TicketValidator;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Symfony\Component\HttpFoundation\Response;
 
 class TicketService
 {
+  use HasAuditLog;
+
   public function __construct(
     protected ClientService $clientService,
   ) {
@@ -23,7 +27,7 @@ class TicketService
 
   public function index(array $filters = []): array
   {
-    $query = Ticket::query()->with(['client', 'participants.user']);
+    $query = Ticket::query()->with(['client', 'participants']);
 
     if (isset($filters['search'])) {
       $query->where(function ($q) use ($filters) {
@@ -55,13 +59,13 @@ class TicketService
       $query->latest();
     }
 
-    $perPage = $filters['per_page'] ?? 15;
+    $perPage = $filters['limit'] ?? 15;
     $page = $filters['page'] ?? 1;
 
     $paginator = $query->paginate($perPage, ['*'], 'page', $page);
 
     return [
-      'items' => $paginator->items(),
+      'data' => $paginator->items(),
       'pagination' => [
         'page' => $paginator->currentPage(),
         'perPage' => $paginator->perPage(),
@@ -83,20 +87,17 @@ class TicketService
 
     $ticket = Ticket::create($data);
 
-    // Create audit log for ticket creation
-    TicketAuditLog::create([
-      'ticket_id' => $ticket->id,
-      'changed_by' => $data['created_by'] ?? auth()->id(),
-      'field_changed' => 'ticket_created',
-      'old_value' => null,
-      'new_value' => json_encode([
+    $this->createAuditLog(
+      $ticket->id,
+      'ticket_created',
+      [],
+      [
         'title' => $ticket->title,
         'internal_status' => $ticket->internal_status,
         'external_status' => $ticket->external_status,
-      ]),
-      'change_type' => 'update',
-      'reason' => 'Ticket created',
-    ]);
+      ],
+      'Ticket created'
+    );
 
     Mail::to($ticket->client->email)
       ->queue(new ClientTicketCreated($ticket));
@@ -128,27 +129,107 @@ class TicketService
       'external_status' => ExternalStatus::PROCESSING->value
     ]);
 
-    // Create audit log for status change
-    $auditLog = TicketAuditLog::create([
-      'ticket_id' => $ticket->id,
-      'changed_by' => auth()->id(),
-      'field_changed' => 'status',
-      'old_value' => json_encode([
+    $this->createAuditLog(
+      $ticket->id,
+      'status',
+      [
         'internal_status' => $oldInternalStatus,
         'external_status' => $oldExternalStatus
-      ]),
-      'new_value' => json_encode([
+      ],
+      [
         'internal_status' => $ticket->internal_status,
         'external_status' => $ticket->external_status
-      ]),
-      'change_type' => 'update',
-      'reason' => 'Initial ticket status updated to Processing',
-      'created_at' => now()
-    ]);
+      ],
+      'Initial ticket status updated to Processing'
+    );
 
     Mail::to($ticket->client->email)
       ->queue(new ClientTicketProcessing($ticket));
 
+    return $ticket;
+  }
+
+
+  public function changeToAwaitingClientApproval(string $ticket_id): Ticket
+  {
+    $ticket = Ticket::findOrFail($ticket_id);
+
+    if ($ticket->internal_status !== InternalStatus::AWAITING_ESTIMATION_APPROVAL->value) {
+      throw new \Exception(
+        'Ticket must be in Awaiting Estimation Approval status to proceed',
+        Response::HTTP_BAD_REQUEST
+      );
+    }
+
+    if (!auth()->user()->hasAnyRole(['leader', 'admin'])) {
+      throw new \Exception(
+        'Only leaders can change ticket to Awaiting Client Approval status',
+        Response::HTTP_FORBIDDEN
+      );
+    }
+
+    $oldInternalStatus = $ticket->internal_status;
+    $oldExternalStatus = $ticket->external_status;
+
+    $ticket->update([
+      'internal_status' => InternalStatus::AWAITING_CLIENT_APPROVAL->value,
+      'external_status' => ExternalStatus::AWAITING_YOUR_APPROVAL->value
+    ]);
+
+    $this->createAuditLog(
+      $ticket->id,
+      'status',
+      [
+        'internal_status' => $oldInternalStatus,
+        'external_status' => $oldExternalStatus
+      ],
+      [
+        'internal_status' => $ticket->internal_status,
+        'external_status' => $ticket->external_status
+      ],
+      'Changed to Awaiting Client Approval status'
+    );
+
+    // Mail::to($ticket->client->email)
+    //   ->queue(new ClientTicketAwaitingApproval($ticket));
+
+    return $ticket;
+  }
+
+  public function clientApprove(string $ticket_id): Ticket
+  {
+    $ticket = Ticket::findOrFail($ticket_id);
+
+    if ($ticket->internal_status !== InternalStatus::AWAITING_CLIENT_APPROVAL->value) {
+      throw new \Exception(
+        'Ticket must be in Awaiting Client Approval status to proceed',
+        Response::HTTP_BAD_REQUEST
+      );
+    }
+
+    $oldInternalStatus = $ticket->internal_status;
+    $oldExternalStatus = $ticket->external_status;
+
+    $ticket->update([
+      'internal_status' => InternalStatus::IN_PROGRESS->value,
+      'external_status' => ExternalStatus::PROCESSING->value
+    ]);
+
+    $this->createAuditLog(
+      $ticket->id,
+      'status',
+      [
+        'internal_status' => $oldInternalStatus,
+        'external_status' => $oldExternalStatus
+      ],
+      [
+        'internal_status' => $ticket->internal_status,
+        'external_status' => $ticket->external_status
+      ],
+      'Client approved ticket estimation'
+    );
+
+    Mail::to($ticket->client->email)->send(new ClientTicketProcessing($ticket));
 
     return $ticket;
   }
@@ -158,6 +239,6 @@ class TicketService
     $ticket = Ticket::where('id', $id)->first();
     TicketValidator::checkTicketExists($ticket);
 
-    return $ticket->load(['client']);
+    return $ticket->load(['client','participants']);
   }
 }

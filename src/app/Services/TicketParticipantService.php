@@ -74,8 +74,8 @@ class TicketParticipantService
     }
 
     // Send email notification
-    Mail::to($participant->user->email)
-      ->queue(new TicketParticipantAdded($participant));
+    // Mail::to($participant->user->email)
+    //   ->queue(new TicketParticipantAdded($participant));
 
     return new TicketParticipantResource($participant);
   }

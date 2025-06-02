@@ -34,14 +34,14 @@ class TicketController extends Controller
             'created_by',
             'sort_by',
             'sort_direction',
-            'per_page',
+            'limit',
             'page'
         ]);
 
         $result = $this->ticketService->index($filters);
 
         return $this->success([
-            'items' => TicketResource::collection($result['items']),
+            'data' => TicketResource::collection($result['data']),
             'pagination' => $result['pagination']
         ], 'Tickets retrieved successfully');
     }
@@ -58,5 +58,31 @@ class TicketController extends Controller
         );
     }
 
-   
+    public function show(string $id)
+    {
+        $ticket = $this->ticketService->getTicketById($id);
+
+        return $this->success(new TicketResource($ticket), 'Ticket retrieved successfully');
+    }
+
+    public function awaitingForClientApproval(string $id)
+    {
+        $ticket = $this->ticketService->changeToAwaitingClientApproval($id);
+
+        return $this->success(
+            new TicketResource($ticket),
+            'Ticket status changed to Awaiting Client Approval successfully'
+        );
+    }
+
+    public function clientApprove(string $id)
+    {
+        $ticket = $this->ticketService->clientApprove($id);
+
+        return $this->success(
+            new TicketResource($ticket),
+            'Ticket status changed to Client Approved successfully'
+        );
+    }
+
 }
