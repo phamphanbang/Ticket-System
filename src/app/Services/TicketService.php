@@ -4,12 +4,14 @@ namespace App\Services;
 
 use App\Constants\ExternalStatus;
 use App\Constants\InternalStatus;
+use App\Mail\ClientTicketAwaitingApproval;
 use App\Mail\ClientTicketCreated;
 use App\Mail\ClientTicketProcessing;
 use App\Models\Ticket;
 use App\Models\TicketAuditLog;
 use App\Traits\HasAuditLog;
 use App\Validators\TicketValidator;
+use Exception;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Symfony\Component\HttpFoundation\Response;
@@ -155,14 +157,14 @@ class TicketService
     $ticket = Ticket::findOrFail($ticket_id);
 
     if ($ticket->internal_status !== InternalStatus::AWAITING_ESTIMATION_APPROVAL->value) {
-      throw new \Exception(
+      throw new Exception(
         'Ticket must be in Awaiting Estimation Approval status to proceed',
         Response::HTTP_BAD_REQUEST
       );
     }
 
     if (!auth()->user()->hasAnyRole(['leader', 'admin'])) {
-      throw new \Exception(
+      throw new Exception(
         'Only leaders can change ticket to Awaiting Client Approval status',
         Response::HTTP_FORBIDDEN
       );
@@ -190,8 +192,7 @@ class TicketService
       'Changed to Awaiting Client Approval status'
     );
 
-    // Mail::to($ticket->client->email)
-    //   ->queue(new ClientTicketAwaitingApproval($ticket));
+    Mail::to($ticket->client->email)->queue(new ClientTicketAwaitingApproval($ticket));
 
     return $ticket;
   }
@@ -201,7 +202,7 @@ class TicketService
     $ticket = Ticket::findOrFail($ticket_id);
 
     if ($ticket->internal_status !== InternalStatus::AWAITING_CLIENT_APPROVAL->value) {
-      throw new \Exception(
+      throw new Exception(
         'Ticket must be in Awaiting Client Approval status to proceed',
         Response::HTTP_BAD_REQUEST
       );

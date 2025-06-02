@@ -12,6 +12,7 @@ use App\Models\Ticket;
 use App\Models\TicketAuditLog;
 use App\Models\User;
 use App\Traits\HasAuditLog;
+use Exception;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Mail;
 use Symfony\Component\HttpFoundation\Response;
@@ -66,23 +67,23 @@ class TaskService
 
   public function store(array $data): Task
   {
-    if(isset($data['assigned_to']) && $data['assigned_to'] !== null) {
+    if (isset($data['assigned_to']) && $data['assigned_to'] !== null) {
       // Check if assigned user is in participants list
       $ticket = Ticket::findOrFail($data['ticket_id']);
       $participants = $ticket->participants()->pluck('user_id')->toArray();
-      
+
       if (!in_array($data['assigned_to'], $participants)) {
-        throw new \Exception('Assigned user must be a participant of the ticket',Response::HTTP_BAD_REQUEST);
+        throw new Exception('Assigned user must be a participant of the ticket', Response::HTTP_BAD_REQUEST);
       }
-      
+
       $data['estimation_status'] = EstimationStatus::ASSIGNED->value;
     }
     $task = Task::create($data)->fresh();
 
-    if(isset($data['assigned_to']) && $data['assigned_to'] !== null){
+    if (isset($data['assigned_to']) && $data['assigned_to'] !== null) {
       Mail::to($task->assignedUser->email)->queue(new TaskAssigned($task));
     }
-    
+
     return $task;
   }
 
@@ -98,13 +99,15 @@ class TaskService
     $ticket = $task->ticket;
     // Get leader from ticket participants
     $leader = $ticket->participants()
-        ->where('role_in_ticket', 'leader')
-        ->first();
+      ->where('role_in_ticket', 'leader')
+      ->first();
 
-    if (!($leader && $leader->user_id === $user->id) && 
-        !$user->hasRole('admin') && 
-        $task->assigned_to !== $user->id) {
-        throw new \Exception('You are not authorized to update this task', Response::HTTP_FORBIDDEN);
+    if (
+      !($leader && $leader->user_id === $user->id) &&
+      !$user->hasRole('admin') &&
+      $task->assigned_to !== $user->id
+    ) {
+      throw new Exception('You are not authorized to update this task', Response::HTTP_FORBIDDEN);
     }
     $task = Task::findOrFail($id);
     $task->update($data);
@@ -118,24 +121,24 @@ class TaskService
     return $task->fresh();
   }
 
-  public function assignStaff(string $id, string $staffId): Task 
+  public function assignStaff(string $id, string $staffId): Task
   {
     $task = Task::findOrFail($id);
-    
+
     $staff = User::findOrFail($staffId);
     if (!$staff->hasRole('staff')) {
-        throw new \Exception('User must have staff role to be assigned to a task', Response::HTTP_BAD_REQUEST);
+      throw new Exception('User must have staff role to be assigned to a task', Response::HTTP_BAD_REQUEST);
     }
 
     $oldStaffId = $task->assigned_to;
-    
+
     // Skip notifications if same staff being reassigned
     if ($oldStaffId === $staffId) {
       return $task;
     }
-    
+
     $oldStaff = $oldStaffId ? User::find($oldStaffId) : null;
-    
+
     $task->update([
       'assigned_to' => $staffId,
       'estimation_status' => EstimationStatus::ASSIGNED->value
@@ -144,7 +147,7 @@ class TaskService
     Mail::to($staff->email)->queue(new TaskAssigned($task));
 
     if ($oldStaff) {
-      Mail::to($oldStaff->email)->queue(new TaskUnassigned($task)); 
+      Mail::to($oldStaff->email)->queue(new TaskUnassigned($task));
     }
 
     return $task->fresh();
@@ -153,55 +156,72 @@ class TaskService
   public function readyToReview(string $id): Task
   {
     $task = Task::findOrFail($id);
+    $user = auth()->user();
 
-    if (
-      ($task->estimation_status === EstimationStatus::ASSIGNED->value || $task->estimation_status === EstimationStatus::NEEDS_REVISION->value) &&
-      $task->assigned_to &&
-      $task->estimated_time
-    ) {
-      $oldEstimationStatus = $task->estimation_status;
-      $task->update([
-        'estimation_status' => EstimationStatus::READY_FOR_REVIEW->value
-      ]);
-
-      $this->createAuditLog(
-        $task->id,
-        'estimation_status',
-        ['estimation_status' => $oldEstimationStatus],
-        ['estimation_status' => $task->estimation_status],
-        'Task marked as ready for estimation review'
-      );
+    if ($task->assigned_to !== $user->id) {
+      throw new Exception('Only assigned staff can mark task ready for review', Response::HTTP_FORBIDDEN);
     }
+
+    if (!$this->canMarkReadyForReview($task)) {
+      throw new Exception('Task cannot be marked ready for review', Response::HTTP_BAD_REQUEST);
+    }
+
+    $oldEstimationStatus = $task->estimation_status;
+    $task->update([
+      'estimation_status' => EstimationStatus::READY_FOR_REVIEW->value
+    ]);
+
+    $this->createAuditLog(
+      $task->id,
+      'estimation_status',
+      ['estimation_status' => $oldEstimationStatus],
+      ['estimation_status' => $task->estimation_status],
+      'Task marked as ready for estimation review'
+    );
 
     return $task->fresh();
   }
 
-  public function notifyLeaderForReview(string $ticketId): void
+  private function canMarkReadyForReview(Task $task): bool
   {
-    $ticket = Ticket::with('tasks')->findOrFail($ticketId);
-    
+    return ($task->estimation_status === EstimationStatus::ASSIGNED->value ||
+      $task->estimation_status === EstimationStatus::NEEDS_REVISION->value) &&
+      $task->assigned_to &&
+      $task->estimated_time;
+  }
+
+  public function notifyLeaderForReview(string $id): void
+  {
+    $task = Task::findOrFail($id);
+    $ticket = $task->ticket;
+
     // Check if all tasks are assigned and ready for review
     $allTasksReady = $ticket->tasks->every(function ($task) {
-      return $task->estimation_status === EstimationStatus::READY_FOR_REVIEW->value 
+      return $task->estimation_status === EstimationStatus::READY_FOR_REVIEW->value
         && $task->assigned_to !== null;
     });
 
-    if ($allTasksReady) {
-      $leader = $ticket->leader;
-      
-      if ($leader && $leader->email) {
-        $oldInternalStatus = $ticket->internal_status;
-        $ticket->update([
-          'internal_status' => InternalStatus::AWAITING_ESTIMATION_APPROVAL->value
-        ]);
+    if (!$allTasksReady) return;
 
-        $this->createAuditLog(
-          $ticket->id,
-          'status',
-          ['internal_status' => $oldInternalStatus],
-          ['internal_status' => $ticket->internal_status],
-          'All tasks ready for estimation review'
-        );
+    $oldInternalStatus = $ticket->internal_status;
+    $ticket->update([
+      'internal_status' => InternalStatus::AWAITING_ESTIMATION_APPROVAL->value
+    ]);
+
+    $this->createAuditLog(
+      $ticket->id,
+      'status',
+      ['internal_status' => $oldInternalStatus],
+      ['internal_status' => $ticket->internal_status],
+      'All tasks ready for estimation review'
+    );
+
+    $leaders = $ticket->participants()->where('role_in_ticket', 'leader')->get();
+
+    foreach ($leaders as $leader) {
+      if ($leader->email) {
+        // Mail::to($leader->email)
+        //   ->queue(new TaskReadyForReview($task));
       }
     }
   }
@@ -215,10 +235,19 @@ class TaskService
    */
   public function markEstimateNeedsRevision(string $taskId, string $revisionReason): Task
   {
-    $task = Task::findOrFail($taskId);
-    
+    $task = Task::with('ticket.participants')->findOrFail($taskId);
+
+    $isLeader = $task->ticket->participants()
+        ->where('user_id', auth()->id())
+        ->where('role_in_ticket', 'leader')
+        ->exists();
+
+    if (!$isLeader) {
+      throw new Exception('Only ticket leaders can mark tasks for revision.', Response::HTTP_FORBIDDEN);
+    }
+
     $oldEstimationStatus = $task->estimation_status;
-    
+
     $task->update([
       'estimation_status' => EstimationStatus::NEEDS_REVISION->value
     ]);
@@ -248,10 +277,19 @@ class TaskService
    */
   public function markEstimateApproved(string $taskId): Task
   {
-    $task = Task::findOrFail($taskId);
-    
+    $task = Task::with('ticket.participants')->findOrFail($taskId);
+
+    $isLeader = $task->ticket->participants()
+        ->where('user_id', auth()->id())
+        ->where('role_in_ticket', 'leader')
+        ->exists();
+
+    if (!$isLeader) {
+      throw new Exception('Only ticket leaders can approve task estimates.', Response::HTTP_FORBIDDEN);
+    }
+
     $oldEstimationStatus = $task->estimation_status;
-    
+
     $task->update([
       'estimation_status' => EstimationStatus::FINALIZED->value
     ]);
@@ -272,6 +310,8 @@ class TaskService
 
     return $task->fresh();
   }
+
+  
   public function destroy(string $id): bool
   {
     $task = Task::findOrFail($id);

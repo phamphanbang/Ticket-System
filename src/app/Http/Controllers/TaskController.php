@@ -21,7 +21,7 @@ class TaskController extends Controller
         return $this->success($tasks);
     }
 
-    public function store(Request $request,$ticket_id): JsonResponse
+    public function store(Request $request, $ticket_id): JsonResponse
     {
         $validated = $request->validate([
             'title' => 'required|string|max:255',
@@ -64,23 +64,18 @@ class TaskController extends Controller
     public function readyToReview(Request $request, string $id)
     {
         $task = $this->taskService->readyToReview($id);
+        $this->taskService->notifyLeaderForReview($id);
         return $this->success($task, 'Task ready to review');
     }
 
-    public function notifyLeaderForReview(Request $request,     string $ticket_id)
-    {
-        $this->taskService->notifyLeaderForReview($ticket_id);
-        return $this->success(null, 'Leader notified for review');
-    }
-
-    public function markEstimateNeedsRevision(Request $request, string $id)
+    public function needsRevision(Request $request, string $id)
     {
         $revision_reason = $request->input('revision_reason');
         $task = $this->taskService->markEstimateNeedsRevision($id, $revision_reason);
         return $this->success($task, 'Task estimate needs revision');
     }
 
-    public function markEstimateApproved(Request $request, string $id)
+    public function estimateApproved(Request $request, string $id)
     {
         $task = $this->taskService->markEstimateApproved($id);
         return $this->success($task, 'Task estimate approved');
@@ -91,4 +86,4 @@ class TaskController extends Controller
         $this->taskService->destroy($id);
         return $this->success(null, 'Task deleted successfully', 204);
     }
-} 
+}
