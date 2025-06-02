@@ -3,7 +3,9 @@
 namespace App\Services;
 
 use App\Constants\EstimationStatus;
+use App\Constants\ExecutionStatus;
 use App\Constants\InternalStatus;
+use App\Constants\TaskPhase;
 use App\Mail\TaskAssigned;
 use App\Mail\TaskUnassigned;
 use App\Models\Task;
@@ -311,7 +313,37 @@ class TaskService
     return $task->fresh();
   }
 
-  
+  public function changeTasksToExecution(string $ticketId)
+  {
+    $tasks = Task::where('ticket_id', $ticketId)->get();
+
+    foreach ($tasks as $task) {
+      $oldPhase = $task->phase;
+      $oldExecutionStatus = $task->execution_status;
+      
+      $task->update([
+        'phase' => TaskPhase::EXECUTION->value,
+        'execution_status' => ExecutionStatus::NOT_STARTED->value
+      ]);
+
+      $this->createAuditLog(
+        $task->id,
+        'phase',
+        $oldPhase,
+        $task->phase,
+        'Task moved to execution phase'
+      );
+
+      // Notify assigned staff member
+      if ($task->assignedTo && $task->assignedTo->email) {
+        // Mail::to($task->assignedTo->email)
+        //   ->queue(new TaskMovedToExecution($task));
+      }
+    }
+
+    return $tasks->fresh();
+  }
+
   public function destroy(string $id): bool
   {
     $task = Task::findOrFail($id);
