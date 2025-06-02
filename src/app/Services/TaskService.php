@@ -240,13 +240,6 @@ class TaskService
     }
   }
 
-  /**
-   * Change task estimation status to need revisions and notify assigned staff
-   * 
-   * @param string $taskId
-   * @param string $revisionReason
-   * @return Task
-   */
   public function markEstimateNeedsRevision(string $taskId, string $revisionReason): Task
   {
     $task = Task::with('ticket.participants')->findOrFail($taskId);
@@ -283,12 +276,6 @@ class TaskService
     return $task->fresh();
   }
 
-  /**
-   * Change task estimation status to finalized and notify assigned staff
-   * 
-   * @param string $taskId
-   * @return Task
-   */
   public function markEstimateApproved(string $taskId): Task
   {
     $task = Task::with('ticket.participants')->findOrFail($taskId);
@@ -423,6 +410,86 @@ class TaskService
     return $task->fresh();
   }
 
+  public function changeRequest(string $id, array $data): Task
+  {
+    $task = Task::findOrFail($id);
+    $user = auth()->user();
+    $ticket = $task->ticket;
+
+    // Check if user is leader in ticket participants
+    $isLeader = $ticket->participants()
+      ->where('user_id', $user->id)
+      ->where('role_in_ticket', 'leader')
+      ->exists();
+
+    if (!$isLeader) {
+      throw new Exception('Only ticket leader can request changes', Response::HTTP_FORBIDDEN);
+    }
+
+    if ($task->execution_status !== ExecutionStatus::IN_PROGRESS->value) {
+      throw new Exception('Task must be In Progress to request changes', Response::HTTP_BAD_REQUEST);
+    }
+
+    $oldData = [
+      'description' => $task->description,
+      'execution_status' => $task->execution_status
+    ];
+
+    $task->update([
+      'description' => $data['description'],
+      'execution_status' => ExecutionStatus::IN_PROGRESS->value
+    ]);
+
+    $this->createAuditLog(
+      $task->id,
+      'change_request',
+      $oldData,
+      [
+        'description' => $task->description,
+        'execution_status' => $task->execution_status
+      ],
+      'Task description updated by leader'
+    );
+
+    return $task->fresh();
+  }
+
+  public function executionReadyToReview(string $id): Task
+  {
+    $task = Task::findOrFail($id);
+    $user = auth()->user();
+    $ticket = $task->ticket;
+
+    // Check if user is leader in ticket participants
+    $isLeader = $ticket->participants()
+      ->where('user_id', $user->id)
+      ->where('role_in_ticket', 'leader')
+      ->exists();
+
+    if (!$isLeader) {
+      throw new Exception('Only ticket leader can mark task as ready for review', Response::HTTP_FORBIDDEN);
+    }
+
+    if ($task->execution_status !== ExecutionStatus::IN_PROGRESS->value) {
+      throw new Exception('Task must be In Progress to mark as ready for review', Response::HTTP_BAD_REQUEST);
+    }
+
+    $oldExecutionStatus = $task->execution_status;
+
+    $task->update([
+      'execution_status' => ExecutionStatus::READY_FOR_REVIEW->value
+    ]);
+
+    $this->createAuditLog(
+      $task->id,
+      'execution_status_change',
+      ['execution_status' => $oldExecutionStatus],
+      ['execution_status' => $task->execution_status],
+      'Task marked as ready for review by leader'
+    );
+
+    return $task->fresh();
+  }
   public function destroy(string $id): bool
   {
     $task = Task::findOrFail($id);

@@ -9,6 +9,7 @@ enum ExecutionStatus: string
     case BLOCKED = 'blocked';
     case CHANGE_REQUESTED = 'change_requested';
     case RE_ESTIMATION_PENDING = 're_estimation_pending';
+    case READY_FOR_REVIEW = 'ready_for_review';
     case DONE = 'done';
 
     public function label(): string
@@ -19,6 +20,7 @@ enum ExecutionStatus: string
             self::BLOCKED => 'Blocked',
             self::CHANGE_REQUESTED => 'Change Requested',
             self::RE_ESTIMATION_PENDING => 'Re-estimation Pending',
+            self::READY_FOR_REVIEW => 'Ready for Review',
             self::DONE => 'Done'
         };
     }

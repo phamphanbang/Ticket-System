@@ -30,7 +30,6 @@ class TicketController extends Controller
             'search',
             'internal_status',
             'external_status',
-            'created_by',
             'sort_by',
             'sort_direction',
             'limit',

@@ -32,6 +32,12 @@ class TicketService
   {
     $query = Ticket::query()->with(['client', 'participants']);
 
+    if (auth()->user()->hasRole('staff')) {
+        $query->whereHas('participants', function ($q) {
+            $q->where('user_id', auth()->id());
+        });
+    }
+    
     if (isset($filters['search'])) {
       $query->where(function ($q) use ($filters) {
         $q->where('subject', 'like', "%{$filters['search']}%")
@@ -51,9 +57,9 @@ class TicketService
       $query->where('external_status', $filters['external_status']);
     }
 
-    if (isset($filters['created_by'])) {
-      $query->where('created_by', $filters['created_by']);
-    }
+    // if (isset($filters['created_by'])) {
+    //   $query->where('created_by', $filters['created_by']);
+    // }
 
     if (isset($filters['sort_by'])) {
       $direction = $filters['sort_direction'] ?? 'desc';

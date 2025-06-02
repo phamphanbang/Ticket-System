@@ -97,6 +97,22 @@ class TaskController extends Controller
         return $this->success($task, 'Task blocked successfully');
     }
 
+    public function changeRequest(Request $request, string $id): JsonResponse
+    {
+        $validated = $request->validate([
+            'description' => 'required|string'
+        ]);
+
+        $task = $this->taskService->changeRequest($id, $validated);
+        return $this->success($task, 'Task description updated successfully');
+    }
+
+    public function executionReadyToReview(string $id): JsonResponse
+    {
+        $task = $this->taskService->executionReadyToReview($id);
+        return $this->success($task, 'Task marked as ready for review successfully');
+    }
+
     public function destroy(string $id): JsonResponse
     {
         $this->taskService->destroy($id);
