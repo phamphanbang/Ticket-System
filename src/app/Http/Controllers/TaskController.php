@@ -81,6 +81,12 @@ class TaskController extends Controller
         return $this->success($task, 'Task estimate approved');
     }
 
+    public function startExecution(string $id): JsonResponse
+    {
+        $task = $this->taskService->startExecution($id);
+        return $this->success($task, 'Task execution started successfully');
+    }
+
     public function destroy(string $id): JsonResponse
     {
         $this->taskService->destroy($id);

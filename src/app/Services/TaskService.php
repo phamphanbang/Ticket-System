@@ -145,7 +145,19 @@ class TaskService
       'assigned_to' => $staffId,
       'estimation_status' => EstimationStatus::ASSIGNED->value
     ]);
-
+    $this->createAuditLog(
+      $task->id,
+      'staff_assignment',
+      [
+        'assigned_to' => $oldStaffId,
+        'estimation_status' => $task->getOriginal('estimation_status')
+      ],
+      [
+        'assigned_to' => $staffId,
+        'estimation_status' => $task->estimation_status
+      ],
+      $oldStaffId ? 'Task reassigned to new staff' : 'Task assigned to staff'
+    );
     Mail::to($staff->email)->queue(new TaskAssigned($task));
 
     if ($oldStaff) {
@@ -342,6 +354,36 @@ class TaskService
     }
 
     return $tasks->fresh();
+  }
+
+  public function startExecution(string $id): Task
+  {
+    $task = Task::findOrFail($id);
+    $user = auth()->user();
+
+    if ($task->assigned_to !== $user->id) {
+      throw new Exception('Only assigned staff can start task execution', Response::HTTP_FORBIDDEN);
+    }
+
+    if ($task->execution_status !== ExecutionStatus::NOT_STARTED->value) {
+      throw new Exception('Task must be in Not Started status to begin execution', Response::HTTP_BAD_REQUEST);
+    }
+
+    $oldExecutionStatus = $task->execution_status;
+    
+    $task->update([
+      'execution_status' => ExecutionStatus::IN_PROGRESS->value
+    ]);
+
+    $this->createAuditLog(
+      $task->id,
+      'execution_status',
+      ['execution_status' => $oldExecutionStatus],
+      ['execution_status' => $task->execution_status],
+      'Task execution started'
+    );
+
+    return $task->fresh();
   }
 
   public function destroy(string $id): bool
