@@ -37,6 +37,8 @@ class TaskAuditLog extends Model
         'created_at' => 'datetime',
     ];
 
+    public $timestamps = false;
+
     /**
      * Get the task that owns the audit log.
      */
