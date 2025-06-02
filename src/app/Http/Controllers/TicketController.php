@@ -63,6 +63,18 @@ class TicketController extends Controller
         return $this->success(new TicketResource($ticket), 'Ticket retrieved successfully');
     }
 
+    public function update(UpdateTicketRequest $request, string $id)
+    {
+        $validated = $request->validated();
+
+        $ticket = $this->ticketService->update($id, $validated);
+
+        return $this->success(
+            new TicketResource($ticket),
+            __('messages.model_updated', ['model' => 'Ticket'])
+        );
+    }
+
     public function awaitingForClientApproval(string $id)
     {
         $ticket = $this->ticketService->changeToAwaitingClientApproval($id);
@@ -83,5 +95,4 @@ class TicketController extends Controller
             'Ticket status changed to Client Approved successfully'
         );
     }
-
 }

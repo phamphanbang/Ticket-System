@@ -37,7 +37,7 @@ class TicketService
             $q->where('user_id', auth()->id());
         });
     }
-    
+
     if (isset($filters['search'])) {
       $query->where(function ($q) use ($filters) {
         $q->where('subject', 'like', "%{$filters['search']}%")
@@ -85,6 +85,11 @@ class TicketService
 
   public function store(array $data)
   {
+    $user = auth()->user();
+    if ($user && $user->hasRole('staff')) {
+      throw new Exception('Only supporters and admins can create tickets', Response::HTTP_FORBIDDEN);
+    }
+
     $client = $this->clientService->createClient([
       'name' => explode('@', $data['client_email'])[0],
       'email' => $data['client_email']
@@ -114,12 +119,56 @@ class TicketService
     return $ticket;
   }
 
-  /**
-   * Check and update ticket status from New/Received to In Analysis/Processing
-   * 
-   * @param Ticket $ticket
-   * @return Ticket
-   */
+  public function update(string $id, array $data): Ticket
+  {
+
+    $ticket = Ticket::findOrFail($id);
+    
+    $user = auth()->user();
+
+    // Check if user is leader, supporter or admin in ticket participants
+    $isAuthorized = $ticket->participants()
+      ->where('user_id', $user->id)
+      ->whereIn('role_in_ticket', ['leader', 'supporter', 'admin'])
+      ->exists();
+
+    if (!$isAuthorized) {
+      throw new Exception('Only ticket leaders, supporters and admins can update tickets', Response::HTTP_FORBIDDEN);
+    }
+
+    $oldData = [
+      'subject' => $ticket->subject,
+      'description' => $ticket->description,
+      'client_email' => $ticket->client->email
+    ];
+
+    // Update client email if changed
+    if (isset($data['client_email']) && $data['client_email'] !== $ticket->client->email) {
+      $client = $this->clientService->createClient([
+        'name' => explode('@', $data['client_email'])[0],
+        'email' => $data['client_email']
+      ]);
+      $data['client_id'] = $client->id;
+    }
+
+    $ticket->update($data);
+
+    $this->createAuditLog(
+      $ticket->id,
+      'ticket_updated',
+      $oldData,
+      [
+        'title' => $ticket->title,
+        'description' => $ticket->description,
+        'priority' => $ticket->priority,
+        'client_email' => $ticket->client->email
+      ],
+      'Ticket updated'
+    );
+
+    return $ticket->fresh();
+  }
+
   public function checkAndUpdateInitialStatus($ticket_id): Ticket
   {
     $ticket = Ticket::findOrFail($ticket_id);
