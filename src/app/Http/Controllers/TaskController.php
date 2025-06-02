@@ -110,6 +110,7 @@ class TaskController extends Controller
     public function executionReadyToReview(string $id): JsonResponse
     {
         $task = $this->taskService->executionReadyToReview($id);
+        $this->taskService->notifyLeaderForExecutionReview($id);
         return $this->success($task, 'Task marked as ready for review successfully');
     }
 

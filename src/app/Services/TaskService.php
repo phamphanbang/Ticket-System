@@ -245,9 +245,9 @@ class TaskService
     $task = Task::with('ticket.participants')->findOrFail($taskId);
 
     $isLeader = $task->ticket->participants()
-        ->where('user_id', auth()->id())
-        ->where('role_in_ticket', 'leader')
-        ->exists();
+      ->where('user_id', auth()->id())
+      ->where('role_in_ticket', 'leader')
+      ->exists();
 
     if (!$isLeader) {
       throw new Exception('Only ticket leaders can mark tasks for revision.', Response::HTTP_FORBIDDEN);
@@ -281,9 +281,9 @@ class TaskService
     $task = Task::with('ticket.participants')->findOrFail($taskId);
 
     $isLeader = $task->ticket->participants()
-        ->where('user_id', auth()->id())
-        ->where('role_in_ticket', 'leader')
-        ->exists();
+      ->where('user_id', auth()->id())
+      ->where('role_in_ticket', 'leader')
+      ->exists();
 
     if (!$isLeader) {
       throw new Exception('Only ticket leaders can approve task estimates.', Response::HTTP_FORBIDDEN);
@@ -319,7 +319,7 @@ class TaskService
     foreach ($tasks as $task) {
       $oldPhase = $task->phase;
       $oldExecutionStatus = $task->execution_status;
-      
+
       $task->update([
         'phase' => TaskPhase::EXECUTION->value,
         'execution_status' => ExecutionStatus::NOT_STARTED->value
@@ -357,7 +357,7 @@ class TaskService
     }
 
     $oldExecutionStatus = $task->execution_status;
-    
+
     $task->update([
       'execution_status' => ExecutionStatus::IN_PROGRESS->value
     ]);
@@ -391,7 +391,7 @@ class TaskService
     }
 
     $oldExecutionStatus = $task->execution_status;
-    
+
     $task->update([
       'execution_status' => ExecutionStatus::BLOCKED->value
     ]);
@@ -499,7 +499,7 @@ class TaskService
     // Check if all tasks are ready for execution review
     $allTasksReady = $ticket->tasks->every(function ($task) {
       return $task->phase === TaskPhase::EXECUTION->value &&
-             $task->execution_status === ExecutionStatus::READY_FOR_REVIEW->value;
+        $task->execution_status === ExecutionStatus::READY_FOR_REVIEW->value;
     });
 
     if (!$allTasksReady) {
