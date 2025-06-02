@@ -374,13 +374,14 @@ class TaskService
     $task->update([
       'execution_status' => ExecutionStatus::IN_PROGRESS->value
     ]);
+    $reason = $task->execution_status === ExecutionStatus::NOT_STARTED->value ? 'Task execution started' : 'Task unblocked and execution resumed';
 
     $this->createAuditLog(
       $task->id,
       'execution_status',
       ['execution_status' => $oldExecutionStatus],
       ['execution_status' => $task->execution_status],
-      'Task execution started'
+      $reason
     );
 
     return $task->fresh();
