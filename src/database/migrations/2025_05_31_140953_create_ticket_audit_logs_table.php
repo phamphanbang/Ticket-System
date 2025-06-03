@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('ticket_audit_logs', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->foreignUuid('ticket_id')->constrained('tickets');
-            $table->foreignUuid('changed_by')->constrained('users');
+            $table->foreignUuid('changed_by')->nullable()->constrained('users');
             $table->string('field_changed');
             $table->text('old_value');
             $table->text('new_value');

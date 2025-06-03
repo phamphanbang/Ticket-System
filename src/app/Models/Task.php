@@ -25,9 +25,6 @@ class Task extends Model
     ];
 
     protected $casts = [
-        'estimation_status' => EstimationStatus::class,
-        'execution_status' => ExecutionStatus::class,
-        'phase' => TaskPhase::class,
         'estimated_time' => 'integer',
         'actual_time' => 'integer',
         'created_at' => 'datetime',

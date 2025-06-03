@@ -17,11 +17,11 @@ return new class extends Migration
             $table->string('title');
             $table->text('description');
             $table->foreignUuid('assigned_to')->nullable()->constrained('users');
-            $table->enum('estimation_status', ['assigned', 'ready_for_review', 'needs_revision', 'finalized']);
-            $table->enum('execution_status', ['in_progress', 'blocked', 'change_requested', 're_estimation_pending', 'done']);
-            $table->enum('phase', ['estimation', 'execution']);
-            $table->integer('estimated_time');
-            $table->integer('actual_time');
+            $table->enum('estimation_status', ['not_started', 'assigned', 'ready_for_review', 'needs_revision', 'finalized'])->default('not_started');
+            $table->enum('execution_status', ['not_started', 'in_progress', 'blocked', 'change_requested', 're_estimation_pending', 'done'])->default('not_started');
+            $table->enum('phase', ['estimation', 'execution'])->default('estimation');
+            $table->integer('estimated_time')->nullable();
+            $table->integer('actual_time')->nullable();
             $table->timestamps();
         });
     }

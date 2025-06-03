@@ -10,6 +10,7 @@ use App\Http\Requests\DelayTicketRequest;
 use App\Http\Requests\UpdateTicketRequest;
 use App\Http\Resources\TicketResource;
 use App\Models\Ticket;
+use App\Services\TaskService;
 use App\Services\TicketService;
 use Illuminate\Http\Request;
 use App\Traits\ApiResponse;
@@ -18,12 +19,10 @@ class TicketController extends Controller
 {
     use ApiResponse;
 
-    private $ticketService;
-
-    public function __construct(TicketService $ticketService)
-    {
-        $this->ticketService = $ticketService;
-    }
+    public function __construct(
+        protected TicketService $ticketService,
+        protected TaskService $taskService
+    ) {}
 
     public function index(Request $request)
     {
@@ -31,17 +30,16 @@ class TicketController extends Controller
             'search',
             'internal_status',
             'external_status',
-            'created_by',
             'sort_by',
             'sort_direction',
-            'per_page',
+            'limit',
             'page'
         ]);
 
         $result = $this->ticketService->index($filters);
 
         return $this->success([
-            'items' => TicketResource::collection($result['items']),
+            'data' => TicketResource::collection($result['data']),
             'pagination' => $result['pagination']
         ], 'Tickets retrieved successfully');
     }
@@ -58,5 +56,43 @@ class TicketController extends Controller
         );
     }
 
-   
+    public function show(string $id)
+    {
+        $ticket = $this->ticketService->getTicketById($id);
+
+        return $this->success(new TicketResource($ticket), 'Ticket retrieved successfully');
+    }
+
+    public function update(UpdateTicketRequest $request, string $id)
+    {
+        $validated = $request->validated();
+
+        $ticket = $this->ticketService->update($id, $validated);
+
+        return $this->success(
+            new TicketResource($ticket),
+            __('messages.model_updated', ['model' => 'Ticket'])
+        );
+    }
+
+    public function awaitingForClientApproval(string $id)
+    {
+        $ticket = $this->ticketService->changeToAwaitingClientApproval($id);
+
+        return $this->success(
+            new TicketResource($ticket),
+            'Ticket status changed to Awaiting Client Approval successfully'
+        );
+    }
+
+    public function clientApprove(string $id)
+    {
+        $ticket = $this->ticketService->clientApprove($id);
+        $this->taskService->changeTasksToExecution($id);
+
+        return $this->success(
+            new TicketResource($ticket),
+            'Ticket status changed to Client Approved successfully'
+        );
+    }
 }

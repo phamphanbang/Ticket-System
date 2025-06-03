@@ -25,7 +25,7 @@ class UserService
     }
 
     if ((boolean) $isPaginate) {
-      $perPage = $request->input('perPage', PaginateConstant::DEFAULT_PER_PAGE->value);
+      $perPage = $request->input('limit', PaginateConstant::DEFAULT_PER_PAGE->value);
       $page = $request->input('page', PaginateConstant::DEFAULT_PAGE->value);
       $offset = ($page - 1) * $perPage;
       if ($offset < 0) {

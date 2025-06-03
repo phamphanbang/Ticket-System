@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CommentController;
+use App\Http\Controllers\TaskController;
 use App\Http\Controllers\TicketParticipantController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\UserController;
@@ -10,25 +11,46 @@ use App\Http\Controllers\UserController;
 Route::post('auth/login', [AuthController::class, 'login']);
 Route::middleware('auth:sanctum')->post('auth/logout', [AuthController::class, 'logout']);
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum','api'])->group(function () {
   Route::apiResource('users', UserController::class);
 
-  Route::apiResource('tickets', TicketController::class);
+  Route::prefix('tickets')->group(function () {
+    Route::get('/', [TicketController::class, 'index']);
+    Route::post('/', [TicketController::class, 'store']);
+    Route::get('/{id}', [TicketController::class, 'show']);
+    Route::put('/{id}', [TicketController::class, 'update']);
+    Route::delete('/{id}', [TicketController::class, 'destroy']);
+    
+    // Ticket status transitions
+    Route::post('/{id}/status/awaiting-client-approval', [TicketController::class, 'awaitingForClientApproval']);
+    Route::post('/{id}/status/client-approve', [TicketController::class, 'clientApprove']);
+    
+    // Nested task routes
+    Route::prefix('/{ticketId}/tasks')->group(function () {
+        Route::get('/', [TaskController::class, 'index']);
+        Route::post('/', [TaskController::class, 'store']);
+    });
+});
+
   Route::get('/tickets/{id}/participants', [TicketParticipantController::class, 'index']);
   Route::post('/tickets/{id}/participants', [TicketParticipantController::class, 'store']);
   Route::delete('/participants/{id}', [TicketParticipantController::class, 'destroy']);
-  // Route::get('tickets', [TicketController::class, 'index'])->name('tickets.index');
-  // Route::get('tickets/{ticket}', [TicketController::class, 'show'])->name('admin.show.ticket');
-  // Route::put('tickets/{ticket}', [TicketController::class, 'update'])->name('admin.update.ticket');
-  // Route::post('tickets/create', [TicketController::class, 'adminCreateTicket'])->name('admin.create.ticket');
-  // Route::post('tickets/{ticket}/action', [TicketController::class, 'action'])->name('staff.action.ticket');
-  // Route::post('tickets/{ticket}/confirm', [TicketController::class, 'staffConfirmTicket'])->name('staff.confirm.ticket');
-  // Route::post('tickets/{ticket}/resolve', [TicketController::class, 'staffResolveTicket'])->name('staff.resolve.ticket');
-  // Route::post('tickets/{ticket}/delay', [TicketController::class, 'staffDelayTicket'])->name('staff.delay.ticket');
 
-  // Route::get('tickets/{ticket}/comments', [CommentController::class, 'index'])->name('staff.get.comment');
-
-  // Route::post('tickets/{ticket}/comments', [CommentController::class, 'store'])->name('staff.create.comment');
+// Task routes
+Route::prefix('tasks')->group(function () {
+    Route::get('/{id}', [TaskController::class, 'show']);
+    Route::put('/{id}', [TaskController::class, 'update']);
+    Route::delete('/{id}', [TaskController::class, 'destroy']);
+    
+    // Task status transitions
+    Route::post('/{id}/status/assign', [TaskController::class, 'assignStaff']);
+    Route::post('/{id}/status/ready-for-review', [TaskController::class, 'readyToReview']);
+    Route::post('/{id}/status/needs-revision', [TaskController::class, 'needsRevision']);
+    Route::post('/{id}/status/estimate-approved', [TaskController::class, 'estimateApproved']);
+    Route::post('/{id}/status/start-execution', [TaskController::class, 'startExecution']);
+    Route::post('/{id}/status/block', [TaskController::class, 'blockTask']);
+    Route::post('/{id}/status/change-request', [TaskController::class, 'changeRequest']);
+    Route::post('/{id}/status/execution-ready', [TaskController::class, 'executionReadyToReview']);
 });
-// Route::post('tickets/{ticket}/reject', [TicketController::class, 'clientRejectTicket'])->name('client.reject.ticket')->middleware('signed');
-// Route::post('tickets/{ticket}/close', [TicketController::class, 'clientCloseTicket'])->name('client.close.ticket')->middleware('signed');
+});
+

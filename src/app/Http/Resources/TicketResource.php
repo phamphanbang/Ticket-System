@@ -21,8 +21,10 @@ class TicketResource extends JsonResource
             'client_email' => $this->client?->email,
             'client_name' => $this->client?->name,
             'internal_status' => $this->internal_status,
-            'created_at' => $this->created_at,
-            'updated_at' => $this->updated_at,
+            'external_status' => $this->external_status,
+            'assigned_to' => $this->participants->where('role_in_ticket', 'leader')->first()?->user?->name,
+            'created_at' => $this->created_at->format('Y-m-d H:i:s'),
+            'updated_at' => $this->updated_at->format('Y-m-d H:i:s'),
         ];
     }
 }

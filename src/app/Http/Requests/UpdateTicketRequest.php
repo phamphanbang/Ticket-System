@@ -8,15 +8,15 @@ class UpdateTicketRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return auth()->check() && auth()->user()->isAdmin();
+        return auth()->check() && auth()->user()->hasRole(['admin', 'supporter', 'leader']);
     }
 
     public function rules(): array
     {
         return [
-            'title' => 'required|string|max:255|min:5',
+            'subject' => 'required|string|max:255|min:5',
             'description' => 'required|string',
-            'assign_to' => 'nullable|exists:users,id|uuid',
+            'client_email' => 'required|email',
         ];
     }
 }
