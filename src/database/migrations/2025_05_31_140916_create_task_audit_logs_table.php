@@ -15,13 +15,13 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->foreignUuid('task_id')->constrained('tasks');
             $table->foreignUuid('changed_by')->constrained('users');
-            $table->enum('current_status', ['assigned', 'ready_for_review', 'needs_revision', 'finalized', 'in_progress', 'blocked', 'change_requested', 're_estimation_pending', 'done']);
+            $table->enum('current_status', ['not_started','assigned', 'ready_for_review', 'needs_revision', 'finalized', 'in_progress', 'blocked', 'change_requested','completed']);
             $table->enum('current_phase', ['estimation', 'execution']);
             $table->string('field_changed');
             $table->text('old_value');
             $table->text('new_value');
             $table->text('reason')->nullable();
-            $table->enum('change_type', ['update', 'correction', 'scope_change']);
+            $table->string('change_type');
             $table->timestamp('created_at');
         });
     }

@@ -19,7 +19,7 @@ return new class extends Migration
             $table->text('old_value');
             $table->text('new_value');
             $table->text('reason')->nullable();
-            $table->enum('change_type', ['update', 'correction', 'scope_change']);
+            $table->string('change_type');
             $table->timestamp('created_at');
         });
     }
