@@ -424,14 +424,15 @@ class TaskService
     $user = auth()->user();
     $ticket = $task->ticket;
 
-    // Check if user is leader in ticket participants
-    $isLeader = $ticket->participants()
+    // Check if user is assigned to this task
+    $isAssignedStaff = $ticket->participants()
       ->where('user_id', $user->id)
-      ->where('role_in_ticket', 'leader')
+      ->where('role_in_ticket', 'staff')
+      ->whereNull('left_at')
       ->exists();
 
-    if (!$isLeader) {
-      throw new Exception('Only ticket leader can mark task as ready for review', Response::HTTP_FORBIDDEN);
+    if (!$isAssignedStaff) {
+      throw new Exception('Only assigned staff can mark task as ready for review', Response::HTTP_FORBIDDEN);
     }
 
     if ($task->execution_status !== ExecutionStatus::IN_PROGRESS->value) {
