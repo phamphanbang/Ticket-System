@@ -42,6 +42,11 @@ class Ticket extends Model
         return $this->hasMany(TicketAuditLog::class);
     }
 
+    public function tasks()
+    {
+        return $this->hasMany(Task::class);
+    }
+
     public function receivedEmails()
     {
         return $this->hasMany(ReceivedEmail::class);

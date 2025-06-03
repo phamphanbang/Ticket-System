@@ -7,6 +7,7 @@ use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use App\Http\Requests\StoreTicketParticipantRequest;
 use App\Services\TicketService;
+use Illuminate\Http\Request;
 
 class TicketParticipantController extends Controller
 {
@@ -43,11 +44,9 @@ class TicketParticipantController extends Controller
     $ticket = $this->ticketService->checkAndUpdateInitialStatus($ticketId);
     $participant = $this->ticketParticipantService->addParticipant(
       ticketId: $ticketId,
-      userId: $validated['user_id'],
-      invitedByUserId: $request->user()->id,
-      role: $validated['role']
+      userIds: $validated['user_id'],
+      invitedByUserId: $request->user()->id
     );
-
 
     return $this->success($participant, 'Participant added successfully', 201);
   }
@@ -63,5 +62,23 @@ class TicketParticipantController extends Controller
     $this->ticketParticipantService->removeParticipant($participantId, request()->user()->id);
 
     return $this->success(null, 'Participant removed successfully');
+  }
+
+  public function destroyMultiple(Request $request,string $ticketId): JsonResponse
+  {
+    $validated = $request->validate([
+      'participant_ids' => 'required|array',
+      'participant_ids.*' => 'required|uuid|exists:ticket_participants,id'
+    ]);
+
+    $removedParticipants = $this->ticketParticipantService->removeParticipants(
+      $validated['participant_ids'],
+      $request->user()->id,
+      $ticketId
+    );
+
+    return $this->success([
+      'removed_participants' => $removedParticipants
+    ], 'Participants removed successfully');
   }
 }

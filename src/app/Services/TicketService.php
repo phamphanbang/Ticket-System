@@ -2,12 +2,15 @@
 
 namespace App\Services;
 
+use App\Constants\EstimationStatus;
+use App\Constants\ExecutionStatus;
 use App\Constants\ExternalStatus;
 use App\Constants\InternalStatus;
 use App\Constants\TaskPhase;
 use App\Mail\ClientTicketAwaitingApproval;
 use App\Mail\ClientTicketCreated;
 use App\Mail\ClientTicketProcessing;
+use App\Models\Task;
 use App\Models\Ticket;
 use App\Models\TicketAuditLog;
 use App\Traits\HasAuditLog;
@@ -33,9 +36,9 @@ class TicketService
     $query = Ticket::query()->with(['client', 'participants']);
 
     if (auth()->user()->hasRole('staff')) {
-        $query->whereHas('participants', function ($q) {
-            $q->where('user_id', auth()->id());
-        });
+      $query->whereHas('participants', function ($q) {
+        $q->where('user_id', auth()->id());
+      });
     }
 
     if (isset($filters['search'])) {
@@ -123,17 +126,19 @@ class TicketService
   {
 
     $ticket = Ticket::findOrFail($id);
-    
+
     $user = auth()->user();
 
     // Check if user is leader, supporter or admin in ticket participants
-    $isAuthorized = $ticket->participants()
-      ->where('user_id', $user->id)
-      ->whereIn('role_in_ticket', ['leader', 'supporter', 'admin'])
-      ->exists();
+    if (!$user->hasRole('admin')) {
+      $isAuthorized = $ticket->participants()
+        ->where('user_id', $user->id)
+        ->whereIn('role_in_ticket', ['leader', 'supporter'])
+        ->exists();
 
-    if (!$isAuthorized) {
-      throw new Exception('Only ticket leaders, supporters and admins can update tickets', Response::HTTP_FORBIDDEN);
+      if (!$isAuthorized) {
+        throw new Exception('Only ticket leaders, supporters and admins can update tickets', Response::HTTP_FORBIDDEN);
+      }
     }
 
     $oldData = [
@@ -167,6 +172,42 @@ class TicketService
     );
 
     return $ticket->fresh();
+  }
+
+  public function notifyLeaderForReview(string $id): void
+  {
+    $task = Task::findOrFail($id);
+    $ticket = $task->ticket;
+
+    // Check if all tasks are assigned and ready for review
+    $allTasksReady = $ticket->tasks->every(function ($task) {
+      return $task->estimation_status === EstimationStatus::READY_FOR_REVIEW->value
+        && $task->assigned_to !== null;
+    });
+
+    if (!$allTasksReady) return;
+
+    $oldInternalStatus = $ticket->internal_status;
+    $ticket->update([
+      'internal_status' => InternalStatus::AWAITING_ESTIMATION_APPROVAL->value
+    ]);
+
+    $this->createAuditLog(
+      $ticket->id,
+      'status',
+      ['internal_status' => $oldInternalStatus],
+      ['internal_status' => $ticket->internal_status],
+      'All tasks ready for estimation review'
+    );
+
+    $leaders = $ticket->participants()->where('role_in_ticket', 'leader')->get();
+
+    foreach ($leaders as $leader) {
+      if ($leader->email) {
+        // Mail::to($leader->email)
+        //   ->queue(new TaskReadyForReview($task));
+      }
+    }
   }
 
   public function checkAndUpdateInitialStatus($ticket_id): Ticket
@@ -291,11 +332,94 @@ class TicketService
     return $ticket;
   }
 
+  public function checkAndCompleteTicket(string $task_id): ?Ticket
+  {
+    $task = Task::findOrFail($task_id);
+    $ticket = $task->ticket;
+
+    // Get all tasks for this ticket
+    $tasks = $ticket->tasks;
+
+    // Check if all tasks are in execution phase and completed
+    $allTasksCompleted = $tasks->every(function ($task) {
+      return $task->phase === 'execution' &&
+        $task->execution_status === 'completed';
+    });
+
+    if ($allTasksCompleted) {
+      $oldInternalStatus = $ticket->internal_status;
+      $oldExternalStatus = $ticket->external_status;
+
+      $ticket->update([
+        'internal_status' => InternalStatus::COMPLETED->value,
+        'external_status' => ExternalStatus::COMPLETED->value
+      ]);
+
+      $this->createAuditLog(
+        $ticket->id,
+        'status',
+        [
+          'internal_status' => $oldInternalStatus,
+          'external_status' => $oldExternalStatus
+        ],
+        [
+          'internal_status' => $ticket->internal_status,
+          'external_status' => $ticket->external_status
+        ],
+        'Ticket automatically marked as completed - all tasks finished'
+      );
+
+      return $ticket;
+    }
+
+    return null;
+  }
+
+  public function notifyLeaderForExecutionReview(string $id): void
+  {
+    $task = Task::findOrFail($id);
+    $ticket = $task->ticket;
+
+    // Check if all tasks are ready for execution review
+    $allTasksReady = $ticket->tasks->every(function ($task) {
+      return $task->phase === TaskPhase::EXECUTION->value &&
+        $task->execution_status === ExecutionStatus::READY_FOR_REVIEW->value;
+    });
+
+    if (!$allTasksReady) {
+      return;
+    }
+
+    $leaders = $ticket->participants()
+      ->where('role_in_ticket', 'leader')
+      ->get();
+
+    foreach ($leaders as $leader) {
+      if ($leader->email) {
+        // Mail::to($leader->email)
+        //   ->queue(new TaskReadyForExecutionReview($task));
+      }
+    }
+
+    $oldInternalStatus = $ticket->internal_status;
+    $ticket->update([
+      'internal_status' => InternalStatus::UNDER_REVIEW->value
+    ]);
+
+    $this->createAuditLog(
+      $ticket->id,
+      'status',
+      ['internal_status' => $oldInternalStatus],
+      ['internal_status' => $ticket->internal_status],
+      'All tasks ready for execution review'
+    );
+  }
+
   public function getTicketById($id)
   {
     $ticket = Ticket::where('id', $id)->first();
     TicketValidator::checkTicketExists($ticket);
 
-    return $ticket->load(['client','participants']);
+    return $ticket->load(['client', 'participants']);
   }
 }

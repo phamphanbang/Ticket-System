@@ -15,8 +15,8 @@ class StoreTicketParticipantRequest extends FormRequest
   public function rules(): array
   {
     return [
-      'user_id' => 'required|uuid|exists:users,id',
-      'role' => 'required|string|in:' . implode(',', TicketParticipant::ROLES),
+      'user_id' => 'required',
+      'user_id.*' => 'required|string|exists:users,id'
     ];
   }
 }

@@ -3,16 +3,11 @@
 namespace App\Services;
 
 use App\Http\Resources\TicketParticipantResource;
-use App\Mail\TicketParticipantAdded;
-use App\Mail\TicketParticipantRemoved;
-use App\Models\Ticket;
 use App\Models\TicketParticipant;
 use App\Models\User;
-use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Support\Facades\Mail;
+use Exception;
 use Symfony\Component\HttpFoundation\Response;
-
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class TicketParticipantService
 {
@@ -20,72 +15,59 @@ class TicketParticipantService
   public function getTicketParticipants(string $ticketId)
   {
     return TicketParticipant::where('ticket_id', $ticketId)
+      ->whereNull('left_at')
       ->with(['user', 'invitedBy'])
       ->get()->map(function ($participant) {
         return new TicketParticipantResource($participant);
       });
   }
 
-  /**
-   * Add a participant to a ticket.
-   *
-   * @param string $ticketId
-   * @param string $userId
-   * @param string $invitedByUserId
-   * @param string $role
-   * @return TicketParticipantResource
-   * @throws \Exception
-   */
   public function addParticipant(
     string $ticketId,
-    string $userId,
-    string $invitedByUserId,
-    string $role
+    array $userIds,
+    string $invitedByUserId
   ) {
-    if (!in_array($role, TicketParticipant::ROLES)) {
-      throw new \Exception('Invalid role specified', Response::HTTP_UNPROCESSABLE_ENTITY);
-    }
 
     // Check if user is already a participant
-    $existingParticipant = TicketParticipant::where('ticket_id', $ticketId)
-      ->where('user_id', $userId)
-      ->first();
+    $participants = collect();
 
-    if ($existingParticipant) {
-      if ($existingParticipant->isActive()) {
-        throw new \Exception('User is already an active participant in this ticket', Response::HTTP_CONFLICT);
+    foreach ($userIds as $userId) {
+      $existingParticipant = TicketParticipant::where('ticket_id', $ticketId)
+        ->where('user_id', $userId)
+        ->first();
+
+      if ($existingParticipant) {
+        if ($existingParticipant->isActive()) {
+          // throw new \Exception("User $userId is already an active participant in this ticket", Response::HTTP_CONFLICT);
+          continue;
+        }
+        // If user left before, reactivate their participation
+        $existingParticipant->update([
+          'left_at' => null,
+          'invited_by_user_id' => $invitedByUserId,
+        ]);
+
+        $participants->push($existingParticipant->load(['user', 'invitedBy']));
+      } else {
+        $participant = TicketParticipant::create([
+          'ticket_id' => $ticketId,
+          'user_id' => $userId,
+          'invited_by_user_id' => $invitedByUserId,
+          'role_in_ticket' => User::find($userId)->roles->first()->name,
+          'joined_at' => now(),
+        ])->load(['user', 'invitedBy']);
+
+        $participants->push($participant);
       }
-      // If user left before, reactivate their participation
-      $existingParticipant->update([
-        'left_at' => null,
-        'role_in_ticket' => $role,
-        'invited_by_user_id' => $invitedByUserId,
-      ]);
 
-      $participant = $existingParticipant->load(['user', 'invitedBy']);
-    } else {
-      $participant = TicketParticipant::create([
-        'ticket_id' => $ticketId,
-        'user_id' => $userId,
-        'invited_by_user_id' => $invitedByUserId,
-        'role_in_ticket' => $role,
-        'joined_at' => now(),
-      ])->load(['user', 'invitedBy']);
+      // Send email notification
+      // Mail::to($participant->user->email)
+      //   ->queue(new TicketParticipantAdded($participant));
     }
 
-    // Send email notification
-    // Mail::to($participant->user->email)
-    //   ->queue(new TicketParticipantAdded($participant));
-
-    return new TicketParticipantResource($participant);
+    return TicketParticipantResource::collection($participants);
   }
 
-  /**
-   * Remove a participant from a ticket.
-   *
-   * @param string $participantId
-   * @return bool
-   */
   public function removeParticipant(string $participantId, string $removedByUserId): bool
   {
     $participant = TicketParticipant::findOrFail($participantId);
@@ -95,12 +77,16 @@ class TicketParticipantService
     if (!$removedByUser->hasRole('admin')) {
       // Check if ticket is closed
       if ($participant->ticket->status === 'closed') {
-        throw new \Exception('Cannot remove participants from a closed ticket', Response::HTTP_FORBIDDEN);
+        throw new Exception('Cannot remove participants from a closed ticket', Response::HTTP_FORBIDDEN);
       }
 
       // Only leaders can remove participants
-      if (!$removedByUser->hasRole('leader')) {
-        throw new \Exception('Only leaders can remove participants', Response::HTTP_FORBIDDEN);
+      if (!$removedByUser->hasRole('leader') || !TicketParticipant::where('ticket_id', $participant->ticket_id)
+          ->where('user_id', $removedByUser->id)
+          ->where('role_in_ticket', 'leader')
+          ->whereNull('left_at')
+          ->exists()) {
+        throw new Exception('Only assigned leaders can remove participants', Response::HTTP_FORBIDDEN);
       }
 
       // Cannot remove last remaining leader
@@ -111,7 +97,7 @@ class TicketParticipantService
           ->count();
 
         if ($leaderCount <= 1) {
-          throw new \Exception('Cannot remove the last remaining leader', Response::HTTP_FORBIDDEN);
+          throw new Exception('Cannot remove the last remaining leader', Response::HTTP_FORBIDDEN);
         }
       }
     }
@@ -122,10 +108,65 @@ class TicketParticipantService
 
     if ($result) {
       // Send email notification
-      Mail::to($participant->user->email)
-        ->queue(new TicketParticipantRemoved($participant, $removedByUserId));
+      // Mail::to($participant->user->email)->queue(new TicketParticipantRemoved($participant, $removedByUserId));
     }
 
     return $result;
+  }
+
+  public function removeParticipants(array $participantIds, string $removedByUserId, string $ticketId): array
+  {
+    $removedParticipants = [];
+    $removedByUser = User::findOrFail($removedByUserId);
+    // Group participants by ticket to validate leader counts
+    $participantsByTicket = TicketParticipant::whereIn('id', $participantIds)
+      ->where('ticket_id', $ticketId)
+      ->get();
+
+    foreach ($participantsByTicket as $ticketId => $participants) {
+      // Pre-check leader count if any leaders are being removed
+      if ($participants->role_in_ticket == 'leader') {
+        $currentLeaderCount = TicketParticipant::where('ticket_id', $ticketId)
+          ->where('role_in_ticket', 'leader')
+          ->whereNull('left_at')
+          ->count();
+
+        $leadersToRemove = $participants->where('role_in_ticket', 'leader')->count();
+
+        if ($currentLeaderCount <= $leadersToRemove && !$removedByUser->hasRole('admin')) {
+          throw new Exception('Cannot remove all leaders from ticket', Response::HTTP_FORBIDDEN);
+        }
+      }
+
+      // Check if ticket is closed
+      $ticket = $participants->first()->ticket;
+      if ($ticket->status === 'closed' && !$removedByUser->hasRole('admin')) {
+        throw new Exception('Cannot remove participants from a closed ticket', Response::HTTP_FORBIDDEN);
+      }
+    }
+
+    if (!$removedByUser->hasRole('admin') && !$removedByUser->hasRole('leader')) {
+      throw new Exception('Only leaders can remove participants', Response::HTTP_FORBIDDEN);
+    }
+
+    foreach ($participantIds as $participantId) {
+      try {
+        $participant = TicketParticipant::findOrFail($participantId);
+        $result = $participant->update([
+          'left_at' => now(),
+        ]);
+
+        if ($result) {
+          $removedParticipants[] = $participantId;
+          // Send email notification
+          // Mail::to($participant->user->email)->queue(new TicketParticipantRemoved($participant, $removedByUserId));
+        }
+      } catch (Exception $e) {
+        Log::error("Failed to remove participant {$participantId}: " . $e->getMessage());
+        continue;
+      }
+    }
+
+    return $removedParticipants;
   }
 }

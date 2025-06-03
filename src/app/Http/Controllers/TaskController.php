@@ -3,16 +3,19 @@
 namespace App\Http\Controllers;
 
 use App\Services\TaskService;
+use App\Services\TicketService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class TaskController extends Controller
 {
     use ApiResponse;
 
     public function __construct(
-        protected TaskService $taskService
+        protected TaskService $taskService,
+        protected TicketService $ticketService
     ) {}
 
     public function index(Request $request, $ticket_id): JsonResponse
@@ -64,7 +67,7 @@ class TaskController extends Controller
     public function readyToReview(Request $request, string $id)
     {
         $task = $this->taskService->readyToReview($id);
-        $this->taskService->notifyLeaderForReview($id);
+        $this->ticketService->notifyLeaderForReview($id);
         return $this->success($task, 'Task ready to review');
     }
 
@@ -110,8 +113,15 @@ class TaskController extends Controller
     public function executionReadyToReview(string $id): JsonResponse
     {
         $task = $this->taskService->executionReadyToReview($id);
-        $this->taskService->notifyLeaderForExecutionReview($id);
+        $this->ticketService->notifyLeaderForExecutionReview($id);
         return $this->success($task, 'Task marked as ready for review successfully');
+    }
+
+    public function completeExecution(string $id): JsonResponse
+    {
+        $task = $this->taskService->completeExecution($id);
+        $this->ticketService->checkAndCompleteTicket($id);
+        return $this->success($task, 'Task execution completed successfully');
     }
 
     public function destroy(string $id): JsonResponse
