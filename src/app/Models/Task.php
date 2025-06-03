@@ -36,6 +36,11 @@ class Task extends Model
         return $this->belongsTo(Ticket::class);
     }
 
+    public function audits()
+    {
+        return $this->hasMany(TaskAuditLog::class);
+    }
+
     public function assignedUser()
     {
         return $this->belongsTo(User::class, 'assigned_to');
