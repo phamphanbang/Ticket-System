@@ -120,6 +120,7 @@ class TaskController extends Controller
     public function completeExecution(string $id): JsonResponse
     {
         $task = $this->taskService->completeExecution($id);
+        $this->ticketService->checkAndCompleteTicket($id);
         return $this->success($task, 'Task execution completed successfully');
     }
 

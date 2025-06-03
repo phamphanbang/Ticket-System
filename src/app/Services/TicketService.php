@@ -35,9 +35,9 @@ class TicketService
     $query = Ticket::query()->with(['client', 'participants']);
 
     if (auth()->user()->hasRole('staff')) {
-        $query->whereHas('participants', function ($q) {
-            $q->where('user_id', auth()->id());
-        });
+      $query->whereHas('participants', function ($q) {
+        $q->where('user_id', auth()->id());
+      });
     }
 
     if (isset($filters['search'])) {
@@ -125,7 +125,7 @@ class TicketService
   {
 
     $ticket = Ticket::findOrFail($id);
-    
+
     $user = auth()->user();
 
     // Check if user is leader, supporter or admin in ticket participants
@@ -341,8 +341,8 @@ class TicketService
 
     // Check if all tasks are in execution phase and completed
     $allTasksCompleted = $tasks->every(function ($task) {
-      return $task->phase === 'execution' && 
-             $task->execution_status === 'completed';
+      return $task->phase === 'execution' &&
+        $task->execution_status === 'completed';
     });
 
     if ($allTasksCompleted) {
@@ -379,6 +379,6 @@ class TicketService
     $ticket = Ticket::where('id', $id)->first();
     TicketValidator::checkTicketExists($ticket);
 
-    return $ticket->load(['client','participants']);
+    return $ticket->load(['client', 'participants']);
   }
 }
