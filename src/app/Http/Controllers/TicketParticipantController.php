@@ -68,7 +68,7 @@ class TicketParticipantController extends Controller
   {
     $validated = $request->validate([
       'participant_ids' => 'required|array',
-      'participant_ids.*' => 'required|string|exists:ticket_participants,id'
+      'participant_ids.*' => 'required|uuid|exists:ticket_participants,id'
     ]);
 
     $removedParticipants = $this->ticketParticipantService->removeParticipants(

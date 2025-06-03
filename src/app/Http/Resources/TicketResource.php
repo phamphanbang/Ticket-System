@@ -22,7 +22,9 @@ class TicketResource extends JsonResource
             'client_name' => $this->client?->name,
             'internal_status' => $this->internal_status,
             'external_status' => $this->external_status,
-            'assigned_to' => $this->participants->where('role_in_ticket', 'leader')->map(function ($participant) {
+            'assigned_to' => $this->participants->where('role_in_ticket', 'leader')
+            ->whereNull('left_at')
+            ->map(function ($participant) {
                 return $participant->user->name;
             })->values()->all(),
             'created_at' => $this->created_at->format('Y-m-d H:i:s'),

@@ -3,17 +3,10 @@
 namespace App\Services;
 
 use App\Http\Resources\TicketParticipantResource;
-use App\Mail\TicketParticipantAdded;
-use App\Mail\TicketParticipantRemoved;
-use App\Models\Ticket;
 use App\Models\TicketParticipant;
 use App\Models\User;
 use Exception;
-use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Support\Facades\Mail;
 use Symfony\Component\HttpFoundation\Response;
-
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class TicketParticipantService
@@ -22,6 +15,7 @@ class TicketParticipantService
   public function getTicketParticipants(string $ticketId)
   {
     return TicketParticipant::where('ticket_id', $ticketId)
+      ->whereNull('left_at')
       ->with(['user', 'invitedBy'])
       ->get()->map(function ($participant) {
         return new TicketParticipantResource($participant);
@@ -87,8 +81,12 @@ class TicketParticipantService
       }
 
       // Only leaders can remove participants
-      if (!$removedByUser->hasRole('leader')) {
-        throw new Exception('Only leaders can remove participants', Response::HTTP_FORBIDDEN);
+      if (!$removedByUser->hasRole('leader') || !TicketParticipant::where('ticket_id', $participant->ticket_id)
+          ->where('user_id', $removedByUser->id)
+          ->where('role_in_ticket', 'leader')
+          ->whereNull('left_at')
+          ->exists()) {
+        throw new Exception('Only assigned leaders can remove participants', Response::HTTP_FORBIDDEN);
       }
 
       // Cannot remove last remaining leader
@@ -127,7 +125,7 @@ class TicketParticipantService
 
     foreach ($participantsByTicket as $ticketId => $participants) {
       // Pre-check leader count if any leaders are being removed
-      if ($participants->contains('role_in_ticket', 'leader')) {
+      if ($participants->role_in_ticket == 'leader') {
         $currentLeaderCount = TicketParticipant::where('ticket_id', $ticketId)
           ->where('role_in_ticket', 'leader')
           ->whereNull('left_at')
