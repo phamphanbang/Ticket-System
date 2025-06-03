@@ -2,12 +2,14 @@
 
 namespace App\Services;
 
+use App\Constants\EstimationStatus;
 use App\Constants\ExternalStatus;
 use App\Constants\InternalStatus;
 use App\Constants\TaskPhase;
 use App\Mail\ClientTicketAwaitingApproval;
 use App\Mail\ClientTicketCreated;
 use App\Mail\ClientTicketProcessing;
+use App\Models\Task;
 use App\Models\Ticket;
 use App\Models\TicketAuditLog;
 use App\Traits\HasAuditLog;
@@ -169,6 +171,42 @@ class TicketService
     );
 
     return $ticket->fresh();
+  }
+
+  public function notifyLeaderForReview(string $id): void
+  {
+    $task = Task::findOrFail($id);
+    $ticket = $task->ticket;
+
+    // Check if all tasks are assigned and ready for review
+    $allTasksReady = $ticket->tasks->every(function ($task) {
+      return $task->estimation_status === EstimationStatus::READY_FOR_REVIEW->value
+        && $task->assigned_to !== null;
+    });
+
+    if (!$allTasksReady) return;
+
+    $oldInternalStatus = $ticket->internal_status;
+    $ticket->update([
+      'internal_status' => InternalStatus::AWAITING_ESTIMATION_APPROVAL->value
+    ]);
+
+    $this->createAuditLog(
+      $ticket->id,
+      'status',
+      ['internal_status' => $oldInternalStatus],
+      ['internal_status' => $ticket->internal_status],
+      'All tasks ready for estimation review'
+    );
+
+    $leaders = $ticket->participants()->where('role_in_ticket', 'leader')->get();
+
+    foreach ($leaders as $leader) {
+      if ($leader->email) {
+        // Mail::to($leader->email)
+        //   ->queue(new TaskReadyForReview($task));
+      }
+    }
   }
 
   public function checkAndUpdateInitialStatus($ticket_id): Ticket

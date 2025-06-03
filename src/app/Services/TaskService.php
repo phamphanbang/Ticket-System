@@ -204,42 +204,6 @@ class TaskService
       $task->estimated_time;
   }
 
-  public function notifyLeaderForReview(string $id): void
-  {
-    $task = Task::findOrFail($id);
-    $ticket = $task->ticket;
-
-    // Check if all tasks are assigned and ready for review
-    $allTasksReady = $ticket->tasks->every(function ($task) {
-      return $task->estimation_status === EstimationStatus::READY_FOR_REVIEW->value
-        && $task->assigned_to !== null;
-    });
-
-    if (!$allTasksReady) return;
-
-    $oldInternalStatus = $ticket->internal_status;
-    $ticket->update([
-      'internal_status' => InternalStatus::AWAITING_ESTIMATION_APPROVAL->value
-    ]);
-
-    $this->createAuditLog(
-      $ticket->id,
-      'status',
-      ['internal_status' => $oldInternalStatus],
-      ['internal_status' => $ticket->internal_status],
-      'All tasks ready for estimation review'
-    );
-
-    $leaders = $ticket->participants()->where('role_in_ticket', 'leader')->get();
-
-    foreach ($leaders as $leader) {
-      if ($leader->email) {
-        // Mail::to($leader->email)
-        //   ->queue(new TaskReadyForReview($task));
-      }
-    }
-  }
-
   public function markEstimateNeedsRevision(string $taskId, string $revisionReason): Task
   {
     $task = Task::with('ticket.participants')->findOrFail($taskId);
@@ -531,6 +495,38 @@ class TaskService
     );
   }
 
+  public function completeExecution(string $id): Task
+  {
+    $task = Task::findOrFail($id);
+    $user = auth()->user();
+
+    // Verify user is a leader for this ticket
+    $isLeader = $task->ticket->participants()
+      ->where('user_id', $user->id)
+      ->where('role_in_ticket', 'leader')
+      ->exists();
+
+    if (!$isLeader && !$user->hasRole('admin')) {
+      throw new Exception('Only ticket leaders can mark tasks as complete', Response::HTTP_FORBIDDEN);
+    }
+
+    $oldExecutionStatus = $task->execution_status;
+
+    $task->update([
+      'execution_status' => ExecutionStatus::COMPLETED->value,
+      'completed_at' => now()
+    ]);
+
+    $this->createAuditLog(
+      $task->id,
+      'execution_status_change', 
+      ['execution_status' => $oldExecutionStatus],
+      ['execution_status' => $task->execution_status],
+      'Task execution marked as complete by leader'
+    );
+
+    return $task->fresh();
+  }
   public function destroy(string $id): bool
   {
     $task = Task::findOrFail($id);
