@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Constants\EstimationStatus;
+use App\Constants\ExecutionStatus;
 use App\Constants\ExternalStatus;
 use App\Constants\InternalStatus;
 use App\Constants\TaskPhase;
@@ -372,6 +373,46 @@ class TicketService
     }
 
     return null;
+  }
+
+  public function notifyLeaderForExecutionReview(string $id): void
+  {
+    $task = Task::findOrFail($id);
+    $ticket = $task->ticket;
+
+    // Check if all tasks are ready for execution review
+    $allTasksReady = $ticket->tasks->every(function ($task) {
+      return $task->phase === TaskPhase::EXECUTION->value &&
+        $task->execution_status === ExecutionStatus::READY_FOR_REVIEW->value;
+    });
+
+    if (!$allTasksReady) {
+      return;
+    }
+
+    $leaders = $ticket->participants()
+      ->where('role_in_ticket', 'leader')
+      ->get();
+
+    foreach ($leaders as $leader) {
+      if ($leader->email) {
+        // Mail::to($leader->email)
+        //   ->queue(new TaskReadyForExecutionReview($task));
+      }
+    }
+
+    $oldInternalStatus = $ticket->internal_status;
+    $ticket->update([
+      'internal_status' => InternalStatus::UNDER_REVIEW->value
+    ]);
+
+    $this->createAuditLog(
+      $ticket->id,
+      'status',
+      ['internal_status' => $oldInternalStatus],
+      ['internal_status' => $ticket->internal_status],
+      'All tasks ready for execution review'
+    );
   }
 
   public function getTicketById($id)
