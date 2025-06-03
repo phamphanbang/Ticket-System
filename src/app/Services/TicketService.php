@@ -8,18 +8,15 @@ use App\Constants\ExternalStatus;
 use App\Constants\InternalStatus;
 use App\Constants\TaskPhase;
 use App\Constants\UserRoles;
-use App\Mail\ClientTicketAwaitingApproval;
 use App\Mail\ClientTicketCreated;
 use App\Mail\ClientTicketProcessing;
 use App\Mail\TicketClosed;
 use App\Models\Task;
 use App\Models\Ticket;
-use App\Models\TicketAuditLog;
 use App\Traits\HasAuditLog;
 use App\Validators\TicketValidator;
 use Exception;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Pagination\LengthAwarePaginator;
 use Symfony\Component\HttpFoundation\Response;
 
 class TicketService
@@ -244,15 +241,15 @@ class TicketService
       'Initial ticket status updated to Processing'
     );
 
-    Mail::to($ticket->client->email)
-      ->queue(new ClientTicketProcessing($ticket));
+    // Mail::to($ticket->client->email)
+    //   ->queue(new ClientTicketProcessing($ticket));
 
     return $ticket;
   }
-
-
-  public function changeToAwaitingClientApproval(string $ticket_id): Ticket
+    public function changeToExecutionTicket(string $ticket_id): Ticket
   {
+    $ticket = Ticket::findOrFail($ticket_id);
+
     $ticket = Ticket::findOrFail($ticket_id);
 
     if ($ticket->internal_status !== InternalStatus::AWAITING_ESTIMATION_APPROVAL->value) {
@@ -262,57 +259,15 @@ class TicketService
       );
     }
 
-    if (!auth()->user()->hasAnyRole([
-      UserRoles::LEADER->value,
-      UserRoles::ADMIN->value
-    ])) {
-      throw new Exception(
-        'Only leaders can change ticket to Awaiting Client Approval status',
-        Response::HTTP_FORBIDDEN
-      );
-    }
-
-    $oldInternalStatus = $ticket->internal_status;
-    $oldExternalStatus = $ticket->external_status;
-
-    $ticket->update([
-      'internal_status' => InternalStatus::AWAITING_CLIENT_APPROVAL->value,
-      'external_status' => ExternalStatus::AWAITING_YOUR_APPROVAL->value
-    ]);
-
-    $this->createAuditLog(
-      $ticket->id,
-      'status',
-      [
-        'internal_status' => $oldInternalStatus,
-        'external_status' => $oldExternalStatus
-      ],
-      [
-        'internal_status' => $ticket->internal_status,
-        'external_status' => $ticket->external_status
-      ],
-      'Changed to Awaiting Client Approval status'
+    TicketValidator::validateUserIsLeader(
+      $ticket,
+      null,
+      'Only leaders can change ticket to In Progress status'
     );
 
-    Mail::to($ticket->client->email)->queue(new ClientTicketAwaitingApproval($ticket));
-
-    return $ticket;
-  }
-
-  public function clientApprove(string $ticket_id): Ticket
-  {
-    $ticket = Ticket::findOrFail($ticket_id);
-
-    if ($ticket->internal_status !== InternalStatus::AWAITING_CLIENT_APPROVAL->value) {
-      throw new Exception(
-        'Ticket must be in Awaiting Client Approval status to proceed',
-        Response::HTTP_BAD_REQUEST
-      );
-    }
-
     $oldInternalStatus = $ticket->internal_status;
     $oldExternalStatus = $ticket->external_status;
-
+  
     $ticket->update([
       'internal_status' => InternalStatus::IN_PROGRESS->value,
       'external_status' => ExternalStatus::PROCESSING->value
@@ -329,11 +284,12 @@ class TicketService
         'internal_status' => $ticket->internal_status,
         'external_status' => $ticket->external_status
       ],
-      'Client approved ticket estimation'
+      'Changed to In Progress status'
     );
 
-    Mail::to($ticket->client->email)->send(new ClientTicketProcessing($ticket));
-
+    // Mail::to($ticket->client->email)->queue(new ClientTicketAwaitingApproval($ticket));
+    Mail::to($ticket->client->email)
+    ->queue(new ClientTicketProcessing($ticket));
     return $ticket;
   }
 

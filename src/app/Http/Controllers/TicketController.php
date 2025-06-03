@@ -75,24 +75,13 @@ class TicketController extends Controller
         );
     }
 
-    public function awaitingForClientApproval(string $id)
+    public function executeTicket(string $id)
     {
-        $ticket = $this->ticketService->changeToAwaitingClientApproval($id);
-
-        return $this->success(
-            new TicketResource($ticket),
-            'Ticket status changed to Awaiting Client Approval successfully'
-        );
-    }
-
-    public function clientApprove(string $id)
-    {
-        $ticket = $this->ticketService->clientApprove($id);
+        $ticket = $this->ticketService->changeToExecutionTicket($id);
         $this->taskService->changeTasksToExecution($id);
-
         return $this->success(
             new TicketResource($ticket),
-            'Ticket status changed to Client Approved successfully'
+            'Ticket status changed to In Progress successfully'
         );
     }
 

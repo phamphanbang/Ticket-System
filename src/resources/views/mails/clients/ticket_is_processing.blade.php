@@ -9,12 +9,25 @@
 
 <p>We're now processing your support ticket: <strong>#{{ $ticket->subject }}</strong>.</p>
 
-<p><strong>Current status of your request:</strong></p>
-<ul>
-    <li><strong>Subject:</strong> {{ $ticket->description }}</li>
-    <li><strong>Status:</strong> In Processing</li>
-    <li><strong>Last updated:</strong> {{ $ticket->updated_at->format('d M Y H:i') }}</li>
-</ul>
+<p><strong>Tasks planned to be completed:</strong></p>
+<table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+    <thead>
+        <tr style="background-color: #f3f4f6;">
+            <th style="padding: 12px; border: 1px solid #e5e7eb; text-align: left;">Task title</th>
+            <th style="padding: 12px; border: 1px solid #e5e7eb; text-align: center;">Task Description</th>
+            <th style="padding: 12px; border: 1px solid #e5e7eb; text-align: center;">Estimated Time (hour)</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach($tasks as $task)
+        <tr>
+            <td style="padding: 12px; border: 1px solid #e5e7eb;">{{ $task->title }}</td>
+            <td style="padding: 12px; border: 1px solid #e5e7eb; text-align: center;">{{ $task->description }}</td>
+            <td style="padding: 12px; border: 1px solid #e5e7eb; text-align: center;">{{ $task->estimated_time }}</td>
+        </tr>
+        @endforeach
+    </tbody>
+</table>
 
 <p>Our team is actively working on your request. We'll keep you updated on any progress.</p>
 

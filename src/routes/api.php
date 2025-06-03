@@ -21,11 +21,9 @@ Route::middleware(['auth:sanctum','api'])->group(function () {
     Route::put('/{id}', [TicketController::class, 'update']);
     Route::delete('/{id}', [TicketController::class, 'destroy']);
     
-    // Ticket status transitions
-    Route::post('/{id}/awaiting-client-approval', [TicketController::class, 'awaitingForClientApproval']);
-    Route::post('/{id}/client-approve', [TicketController::class, 'clientApprove']);
-    
-    // Nested task routes
+    Route::post('/{id}/execute', [TicketController::class, 'executeTicket']);
+    Route::post('/{id}/close', [TicketController::class, 'closeTicket']);
+
     Route::prefix('/{id}/tasks')->group(function () {
         Route::get('/', [TaskController::class, 'index']);
         Route::post('/', [TaskController::class, 'store']);

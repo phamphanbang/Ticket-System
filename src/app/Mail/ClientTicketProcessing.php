@@ -31,6 +31,7 @@ class ClientTicketProcessing extends Mailable
             with: [
                 'ticket' => $this->ticket,
                 'client' => $this->ticket->client,
+                'tasks' => $this->ticket->tasks
             ]
         );
     }

@@ -31,7 +31,11 @@ class TicketValidator
       ->where('role_in_ticket', UserRoles::LEADER->value)
       ->exists();
 
-    if (!$isLeader) {
+    $isAdmin = auth()->user()->hasAnyRole([
+      UserRoles::ADMIN->value,
+    ]);
+
+    if (!$isLeader && !$isAdmin) {
       throw new Exception($message, Response::HTTP_FORBIDDEN);
     }
   }
