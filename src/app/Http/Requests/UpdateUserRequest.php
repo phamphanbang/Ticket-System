@@ -9,7 +9,10 @@ class UpdateUserRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return auth()->check() && auth()->user()->hasRole('admin');
+        return auth()->check()
+            && auth()->user()->hasRole(
+                UserRoles::ADMIN->value
+            );
     }
 
     public function rules(): array
@@ -20,7 +23,7 @@ class UpdateUserRequest extends FormRequest
             'name'     => 'required|string|max:255',
             'email'    => 'required|email|unique:users,email,' . $userId,
             'password' => 'nullable|string|min:8|confirmed',
-            'role'     => 'required|string|in:admin,staff,supporter,leader' ,
+            'role'     => 'required|string|in:admin,staff,supporter,leader',
         ];
     }
 }

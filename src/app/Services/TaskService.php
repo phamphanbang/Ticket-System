@@ -4,18 +4,17 @@ namespace App\Services;
 
 use App\Constants\EstimationStatus;
 use App\Constants\ExecutionStatus;
-use App\Constants\InternalStatus;
+use App\Constants\PaginateConstant;
 use App\Constants\TaskPhase;
+use App\Constants\UserRoles;
 use App\Mail\TaskAssigned;
 use App\Mail\TaskUnassigned;
 use App\Models\Task;
-use App\Models\TaskAuditLog;
 use App\Models\Ticket;
-use App\Models\TicketAuditLog;
 use App\Models\User;
 use App\Traits\HasAuditLog;
+use App\Validators\TaskValidator;
 use Exception;
-use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Mail;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -52,8 +51,8 @@ class TaskService
       $query->latest();
     }
 
-    $perPage = $filters['per_page'] ?? 15;
-    $page = $filters['page'] ?? 1;
+    $perPage = $filters['limit'] ?? PaginateConstant::DEFAULT_PER_PAGE->value;
+    $page = $filters['page'] ?? PaginateConstant::DEFAULT_PAGE->value;
 
     $paginator = $query->paginate($perPage, ['*'], 'page', $page);
 
@@ -98,15 +97,14 @@ class TaskService
   {
     $task = Task::findOrFail($id);
     $user = request()->user();
-    $ticket = $task->ticket;
     // Get leader from ticket participants
-    $leader = $ticket->participants()
-      ->where('role_in_ticket', 'leader')
+    $leader = $task->ticket->participants()
+      ->where('role_in_ticket', UserRoles::LEADER->value)
       ->first();
 
     if (
       !($leader && $leader->user_id === $user->id) &&
-      !$user->hasRole('admin') &&
+      !$user->hasRole(UserRoles::ADMIN->value) &&
       $task->assigned_to !== $user->id
     ) {
       throw new Exception('You are not authorized to update this task', Response::HTTP_FORBIDDEN);
@@ -128,7 +126,7 @@ class TaskService
     $task = Task::findOrFail($id);
 
     $staff = User::findOrFail($staffId);
-    if (!$staff->hasRole('staff')) {
+    if (!$staff->hasRole(UserRoles::STAFF->value)) {
       throw new Exception('User must have staff role to be assigned to a task', Response::HTTP_BAD_REQUEST);
     }
 
@@ -158,7 +156,7 @@ class TaskService
       ],
       $oldStaffId ? 'Task reassigned to new staff' : 'Task assigned to staff'
     );
-    Mail::to($staff->email)->queue(new TaskAssigned($task));
+    //Mail::to($staff->email)->queue(new TaskAssigned($task));
 
     if ($oldStaff) {
       Mail::to($oldStaff->email)->queue(new TaskUnassigned($task));
@@ -170,14 +168,22 @@ class TaskService
   public function readyToReview(string $id): Task
   {
     $task = Task::findOrFail($id);
-    $user = auth()->user();
 
-    if ($task->assigned_to !== $user->id) {
-      throw new Exception('Only assigned staff can mark task ready for review', Response::HTTP_FORBIDDEN);
+    TaskValidator::validateStaffIsAssignedToTask($task);
+    
+    if (!in_array($task->estimation_status, [
+      EstimationStatus::ASSIGNED->value,
+      EstimationStatus::NEEDS_REVISION->value
+    ])) {
+      throw new Exception('Task must be in Assigned or Needs Revision status', Response::HTTP_BAD_REQUEST);
     }
 
-    if (!$this->canMarkReadyForReview($task)) {
-      throw new Exception('Task cannot be marked ready for review', Response::HTTP_BAD_REQUEST);
+    if (!$task->assigned_to) {
+      throw new Exception('Task must be assigned to a staff member', Response::HTTP_BAD_REQUEST);
+    }
+
+    if (!$task->estimated_time) {
+      throw new Exception('Task must have an estimated time', Response::HTTP_BAD_REQUEST);
     }
 
     $oldEstimationStatus = $task->estimation_status;
@@ -196,26 +202,15 @@ class TaskService
     return $task->fresh();
   }
 
-  private function canMarkReadyForReview(Task $task): bool
-  {
-    return ($task->estimation_status === EstimationStatus::ASSIGNED->value ||
-      $task->estimation_status === EstimationStatus::NEEDS_REVISION->value) &&
-      $task->assigned_to &&
-      $task->estimated_time;
-  }
-
   public function markEstimateNeedsRevision(string $taskId, string $revisionReason): Task
   {
     $task = Task::with('ticket.participants')->findOrFail($taskId);
 
-    $isLeader = $task->ticket->participants()
-      ->where('user_id', auth()->id())
-      ->where('role_in_ticket', 'leader')
-      ->exists();
-
-    if (!$isLeader) {
-      throw new Exception('Only ticket leaders can mark tasks for revision.', Response::HTTP_FORBIDDEN);
-    }
+    TaskValidator::validateUserIsLeader(
+      $task,
+      null,
+      'Only ticket leaders can mark tasks for revision.'
+    );
 
     $oldEstimationStatus = $task->estimation_status;
 
@@ -244,14 +239,11 @@ class TaskService
   {
     $task = Task::with('ticket.participants')->findOrFail($taskId);
 
-    $isLeader = $task->ticket->participants()
-      ->where('user_id', auth()->id())
-      ->where('role_in_ticket', 'leader')
-      ->exists();
-
-    if (!$isLeader) {
-      throw new Exception('Only ticket leaders can approve task estimates.', Response::HTTP_FORBIDDEN);
-    }
+    TaskValidator::validateUserIsLeader(
+      $task,
+      null,
+      'Only ticket leaders can approve task estimates.'
+    );
 
     $oldEstimationStatus = $task->estimation_status;
 
@@ -267,7 +259,6 @@ class TaskService
       'Task estimation approved'
     );
 
-    // Notify assigned staff member
     if ($task->assignedTo && $task->assignedTo->email) {
       // Mail::to($task->assignedTo->email)
       //   ->queue(new TaskEstimateApproved($task));
@@ -297,7 +288,6 @@ class TaskService
         'Task moved to execution phase'
       );
 
-      // Notify assigned staff member
       if ($task->assignedTo && $task->assignedTo->email) {
         // Mail::to($task->assignedTo->email)
         //   ->queue(new TaskMovedToExecution($task));
@@ -310,14 +300,15 @@ class TaskService
   public function startExecution(string $id): Task
   {
     $task = Task::findOrFail($id);
-    $user = auth()->user();
 
-    if ($task->assigned_to !== $user->id) {
-      throw new Exception('Only assigned staff can start task execution', Response::HTTP_FORBIDDEN);
-    }
+    TaskValidator::validateStaffIsAssignedToTask($task);
 
-    if (!in_array($task->execution_status, [ExecutionStatus::NOT_STARTED->value, ExecutionStatus::BLOCKED->value])) {
-      throw new Exception('Task must be in Not Started or Blocked status to begin execution', Response::HTTP_BAD_REQUEST);
+    if (!in_array($task->execution_status, [
+      ExecutionStatus::NOT_STARTED->value,
+      ExecutionStatus::BLOCKED->value,
+      ExecutionStatus::CHANGE_REQUESTED->value
+    ])) {
+      throw new Exception('Task must be in Not Started, Blocked or Change Requested status to begin execution', Response::HTTP_BAD_REQUEST);
     }
 
     $oldExecutionStatus = $task->execution_status;
@@ -325,7 +316,9 @@ class TaskService
     $task->update([
       'execution_status' => ExecutionStatus::IN_PROGRESS->value
     ]);
-    $reason = $task->execution_status === ExecutionStatus::NOT_STARTED->value ? 'Task execution started' : 'Task unblocked and execution resumed';
+    $reason = $task->execution_status === ExecutionStatus::NOT_STARTED->value ?
+      'Task execution started' :
+      'Task unblocked and execution resumed';
 
     $this->createAuditLog(
       $task->id,
@@ -341,11 +334,12 @@ class TaskService
   public function blockTask(string $id, string $reason): Task
   {
     $task = Task::findOrFail($id);
-    $user = auth()->user();
 
-    if ($task->assigned_to !== $user->id) {
-      throw new Exception('Only assigned staff can block this task', Response::HTTP_FORBIDDEN);
-    }
+    TaskValidator::validateStaffIsAssignedToTask(
+      $task,
+      null,
+      'Only assigned staff can block this task'
+    );
 
     if (!in_array($task->execution_status, [
       ExecutionStatus::NOT_STARTED->value,
@@ -377,18 +371,12 @@ class TaskService
   public function changeRequest(string $id, array $data): Task
   {
     $task = Task::findOrFail($id);
-    $user = auth()->user();
-    $ticket = $task->ticket;
 
-    // Check if user is leader in ticket participants
-    $isLeader = $ticket->participants()
-      ->where('user_id', $user->id)
-      ->where('role_in_ticket', 'leader')
-      ->exists();
-
-    if (!$isLeader) {
-      throw new Exception('Only ticket leader can request changes', Response::HTTP_FORBIDDEN);
-    }
+    TaskValidator::validateUserIsLeader(
+      $task,
+      null,
+      'Only ticket leader can request changes'
+    );
 
     if ($task->execution_status !== ExecutionStatus::IN_PROGRESS->value) {
       throw new Exception('Task must be In Progress to request changes', Response::HTTP_BAD_REQUEST);
@@ -401,7 +389,7 @@ class TaskService
 
     $task->update([
       'description' => $data['description'],
-      'execution_status' => ExecutionStatus::IN_PROGRESS->value
+      'execution_status' => ExecutionStatus::CHANGE_REQUESTED->value
     ]);
 
     $this->createAuditLog(
@@ -421,19 +409,12 @@ class TaskService
   public function executionReadyToReview(string $id): Task
   {
     $task = Task::findOrFail($id);
-    $user = auth()->user();
-    $ticket = $task->ticket;
 
-    // Check if user is assigned to this task
-    $isAssignedStaff = $ticket->participants()
-      ->where('user_id', $user->id)
-      ->where('role_in_ticket', 'staff')
-      ->whereNull('left_at')
-      ->exists();
-
-    if (!$isAssignedStaff) {
-      throw new Exception('Only assigned staff can mark task as ready for review', Response::HTTP_FORBIDDEN);
-    }
+    TaskValidator::validateStaffIsAssignedToTask(
+      $task,
+      null,
+      'Only assigned staff can mark task as ready for review'
+    );
 
     if ($task->execution_status !== ExecutionStatus::IN_PROGRESS->value) {
       throw new Exception('Task must be In Progress to mark as ready for review', Response::HTTP_BAD_REQUEST);
@@ -459,17 +440,12 @@ class TaskService
   public function completeExecution(string $id): Task
   {
     $task = Task::findOrFail($id);
-    $user = auth()->user();
 
-    // Verify user is a leader for this ticket
-    $isLeader = $task->ticket->participants()
-      ->where('user_id', $user->id)
-      ->where('role_in_ticket', 'leader')
-      ->exists();
-
-    if (!$isLeader && !$user->hasRole('admin')) {
-      throw new Exception('Only ticket leaders can mark tasks as complete', Response::HTTP_FORBIDDEN);
-    }
+    TaskValidator::validateUserIsLeader(
+      $task,
+      null,
+      'Only ticket leaders can mark tasks as complete'
+    );
 
     $oldExecutionStatus = $task->execution_status;
 
@@ -480,7 +456,7 @@ class TaskService
 
     $this->createAuditLog(
       $task->id,
-      'execution_status_change', 
+      'execution_status_change',
       ['execution_status' => $oldExecutionStatus],
       ['execution_status' => $task->execution_status],
       'Task execution marked as complete by leader'
