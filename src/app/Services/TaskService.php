@@ -52,7 +52,7 @@ class TaskService
       $query->latest();
     }
 
-    $perPage = $filters['per_page'] ?? 15;
+    $perPage = $filters['limit'] ?? 15;
     $page = $filters['page'] ?? 1;
 
     $paginator = $query->paginate($perPage, ['*'], 'page', $page);
