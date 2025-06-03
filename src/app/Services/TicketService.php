@@ -331,6 +331,49 @@ class TicketService
     return $ticket;
   }
 
+  public function checkAndCompleteTicket(string $task_id): ?Ticket
+  {
+    $task = Task::findOrFail($task_id);
+    $ticket = $task->ticket;
+
+    // Get all tasks for this ticket
+    $tasks = $ticket->tasks;
+
+    // Check if all tasks are in execution phase and completed
+    $allTasksCompleted = $tasks->every(function ($task) {
+      return $task->phase === 'execution' && 
+             $task->execution_status === 'completed';
+    });
+
+    if ($allTasksCompleted) {
+      $oldInternalStatus = $ticket->internal_status;
+      $oldExternalStatus = $ticket->external_status;
+
+      $ticket->update([
+        'internal_status' => InternalStatus::COMPLETED->value,
+        'external_status' => ExternalStatus::COMPLETED->value
+      ]);
+
+      $this->createAuditLog(
+        $ticket->id,
+        'status',
+        [
+          'internal_status' => $oldInternalStatus,
+          'external_status' => $oldExternalStatus
+        ],
+        [
+          'internal_status' => $ticket->internal_status,
+          'external_status' => $ticket->external_status
+        ],
+        'Ticket automatically marked as completed - all tasks finished'
+      );
+
+      return $ticket;
+    }
+
+    return null;
+  }
+
   public function getTicketById($id)
   {
     $ticket = Ticket::where('id', $id)->first();
