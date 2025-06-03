@@ -52,6 +52,7 @@ Route::prefix('tasks')->group(function () {
     Route::post('/{id}/block', [TaskController::class, 'blockTask']);
     Route::post('/{id}/change-request', [TaskController::class, 'changeRequest']);
     Route::post('/{id}/execution-ready', [TaskController::class, 'executionReadyToReview']);
+    Route::post('/{id}/execution-complete', [TaskController::class, 'completeExecution']);
 });
 });
 

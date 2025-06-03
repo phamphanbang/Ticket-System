@@ -117,6 +117,12 @@ class TaskController extends Controller
         return $this->success($task, 'Task marked as ready for review successfully');
     }
 
+    public function completeExecution(string $id): JsonResponse
+    {
+        $task = $this->taskService->completeExecution($id);
+        return $this->success($task, 'Task execution completed successfully');
+    }
+
     public function destroy(string $id): JsonResponse
     {
         $this->taskService->destroy($id);
