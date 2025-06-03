@@ -127,13 +127,15 @@ class TicketService
     $user = auth()->user();
 
     // Check if user is leader, supporter or admin in ticket participants
-    $isAuthorized = $ticket->participants()
-      ->where('user_id', $user->id)
-      ->whereIn('role_in_ticket', ['leader', 'supporter', 'admin'])
-      ->exists();
+    if (!$user->hasRole('admin')) {
+      $isAuthorized = $ticket->participants()
+        ->where('user_id', $user->id)
+        ->whereIn('role_in_ticket', ['leader', 'supporter'])
+        ->exists();
 
-    if (!$isAuthorized) {
-      throw new Exception('Only ticket leaders, supporters and admins can update tickets', Response::HTTP_FORBIDDEN);
+      if (!$isAuthorized) {
+        throw new Exception('Only ticket leaders, supporters and admins can update tickets', Response::HTTP_FORBIDDEN);
+      }
     }
 
     $oldData = [
