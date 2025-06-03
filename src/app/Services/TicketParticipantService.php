@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Constants\UserRoles;
 use App\Http\Resources\TicketParticipantResource;
 use App\Models\TicketParticipant;
 use App\Models\User;
@@ -74,25 +75,25 @@ class TicketParticipantService
     $removedByUser = User::findOrFail($removedByUserId);
 
     // Admin can override all rules
-    if (!$removedByUser->hasRole('admin')) {
+    if (!$removedByUser->hasRole(UserRoles::ADMIN->value)) {
       // Check if ticket is closed
       if ($participant->ticket->status === 'closed') {
         throw new Exception('Cannot remove participants from a closed ticket', Response::HTTP_FORBIDDEN);
       }
 
       // Only leaders can remove participants
-      if (!$removedByUser->hasRole('leader') || !TicketParticipant::where('ticket_id', $participant->ticket_id)
-          ->where('user_id', $removedByUser->id)
-          ->where('role_in_ticket', 'leader')
-          ->whereNull('left_at')
-          ->exists()) {
+      if (!$removedByUser->hasRole(UserRoles::LEADER->value) || !TicketParticipant::where('ticket_id', $participant->ticket_id)
+        ->where('user_id', $removedByUser->id)
+        ->where('role_in_ticket', UserRoles::LEADER->value)
+        ->whereNull('left_at')
+        ->exists()) {
         throw new Exception('Only assigned leaders can remove participants', Response::HTTP_FORBIDDEN);
       }
 
       // Cannot remove last remaining leader
-      if ($participant->role_in_ticket === 'leader') {
+      if ($participant->role_in_ticket === UserRoles::LEADER->value) {
         $leaderCount = TicketParticipant::where('ticket_id', $participant->ticket_id)
-          ->where('role_in_ticket', 'leader')
+          ->where('role_in_ticket', UserRoles::LEADER->value)
           ->whereNull('left_at')
           ->count();
 
@@ -125,27 +126,30 @@ class TicketParticipantService
 
     foreach ($participantsByTicket as $ticketId => $participants) {
       // Pre-check leader count if any leaders are being removed
-      if ($participants->role_in_ticket == 'leader') {
+      if ($participants->role_in_ticket == UserRoles::LEADER->value) {
         $currentLeaderCount = TicketParticipant::where('ticket_id', $ticketId)
-          ->where('role_in_ticket', 'leader')
+          ->where('role_in_ticket', UserRoles::LEADER->value)
           ->whereNull('left_at')
           ->count();
 
-        $leadersToRemove = $participants->where('role_in_ticket', 'leader')->count();
+        $leadersToRemove = $participants->where('role_in_ticket', UserRoles::LEADER->value)->count();
 
-        if ($currentLeaderCount <= $leadersToRemove && !$removedByUser->hasRole('admin')) {
+        if ($currentLeaderCount <= $leadersToRemove && !$removedByUser->hasRole(UserRoles::ADMIN->value)) {
           throw new Exception('Cannot remove all leaders from ticket', Response::HTTP_FORBIDDEN);
         }
       }
 
       // Check if ticket is closed
       $ticket = $participants->first()->ticket;
-      if ($ticket->status === 'closed' && !$removedByUser->hasRole('admin')) {
+      if ($ticket->status === 'closed' && !$removedByUser->hasRole(UserRoles::ADMIN->value)) {
         throw new Exception('Cannot remove participants from a closed ticket', Response::HTTP_FORBIDDEN);
       }
     }
 
-    if (!$removedByUser->hasRole('admin') && !$removedByUser->hasRole('leader')) {
+    if (
+      !$removedByUser->hasRole(UserRoles::ADMIN->value)
+      && !$removedByUser->hasRole(UserRoles::LEADER->value)
+    ) {
       throw new Exception('Only leaders can remove participants', Response::HTTP_FORBIDDEN);
     }
 

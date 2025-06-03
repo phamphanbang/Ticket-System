@@ -7,6 +7,7 @@ use App\Constants\ExecutionStatus;
 use App\Constants\ExternalStatus;
 use App\Constants\InternalStatus;
 use App\Constants\TaskPhase;
+use App\Constants\UserRoles;
 use App\Mail\ClientTicketAwaitingApproval;
 use App\Mail\ClientTicketCreated;
 use App\Mail\ClientTicketProcessing;
@@ -35,7 +36,7 @@ class TicketService
   {
     $query = Ticket::query()->with(['client', 'participants']);
 
-    if (auth()->user()->hasRole('staff')) {
+    if (auth()->user()->hasRole(UserRoles::STAFF->value)) {
       $query->whereHas('participants', function ($q) {
         $q->where('user_id', auth()->id());
       });
@@ -89,7 +90,7 @@ class TicketService
   public function store(array $data)
   {
     $user = auth()->user();
-    if ($user && $user->hasRole('staff')) {
+    if ($user && $user->hasRole(UserRoles::STAFF->value)) {
       throw new Exception('Only supporters and admins can create tickets', Response::HTTP_FORBIDDEN);
     }
 
@@ -130,10 +131,10 @@ class TicketService
     $user = auth()->user();
 
     // Check if user is leader, supporter or admin in ticket participants
-    if (!$user->hasRole('admin')) {
+    if (!$user->hasRole(UserRoles::ADMIN->value)) {
       $isAuthorized = $ticket->participants()
         ->where('user_id', $user->id)
-        ->whereIn('role_in_ticket', ['leader', 'supporter'])
+        ->whereIn('role_in_ticket', [UserRoles::LEADER->value, UserRoles::SUPPORTER->value])
         ->exists();
 
       if (!$isAuthorized) {
@@ -200,7 +201,7 @@ class TicketService
       'All tasks ready for estimation review'
     );
 
-    $leaders = $ticket->participants()->where('role_in_ticket', 'leader')->get();
+    $leaders = $ticket->participants()->where('role_in_ticket', UserRoles::LEADER->value)->get();
 
     foreach ($leaders as $leader) {
       if ($leader->email) {
@@ -260,7 +261,10 @@ class TicketService
       );
     }
 
-    if (!auth()->user()->hasAnyRole(['leader', 'admin'])) {
+    if (!auth()->user()->hasAnyRole([
+      UserRoles::LEADER->value,
+      UserRoles::ADMIN->value
+    ])) {
       throw new Exception(
         'Only leaders can change ticket to Awaiting Client Approval status',
         Response::HTTP_FORBIDDEN
@@ -391,7 +395,7 @@ class TicketService
     }
 
     $leaders = $ticket->participants()
-      ->where('role_in_ticket', 'leader')
+      ->where('role_in_ticket', UserRoles::LEADER->value)
       ->get();
 
     foreach ($leaders as $leader) {

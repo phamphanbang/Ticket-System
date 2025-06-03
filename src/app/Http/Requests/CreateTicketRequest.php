@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Constants\UserRoles;
 use Illuminate\Foundation\Http\FormRequest;
 
 class CreateTicketRequest extends FormRequest
@@ -11,7 +12,11 @@ class CreateTicketRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return auth()->check() && auth()->user()->hasAnyRole(['supporter', 'admin']);
+        return auth()->check()
+            && auth()->user()->hasAnyRole([
+                UserRoles::SUPPORTER->value,
+                UserRoles::ADMIN->value
+            ]);
     }
 
     /**
@@ -35,7 +40,6 @@ class CreateTicketRequest extends FormRequest
      */
     public function messages(): array
     {
-        return [
-        ];
+        return [];
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Constants\UserRoles;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -22,7 +23,7 @@ class TicketResource extends JsonResource
             'client_name' => $this->client?->name,
             'internal_status' => $this->internal_status,
             'external_status' => $this->external_status,
-            'assigned_to' => $this->participants->where('role_in_ticket', 'leader')
+            'assigned_to' => $this->participants->where('role_in_ticket', UserRoles::LEADER->value)
             ->whereNull('left_at')
             ->map(function ($participant) {
                 return $participant->user->name;

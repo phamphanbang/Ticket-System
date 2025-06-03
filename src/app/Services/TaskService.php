@@ -6,6 +6,7 @@ use App\Constants\EstimationStatus;
 use App\Constants\ExecutionStatus;
 use App\Constants\InternalStatus;
 use App\Constants\TaskPhase;
+use App\Constants\UserRoles;
 use App\Mail\TaskAssigned;
 use App\Mail\TaskUnassigned;
 use App\Models\Task;
@@ -101,12 +102,12 @@ class TaskService
     $ticket = $task->ticket;
     // Get leader from ticket participants
     $leader = $ticket->participants()
-      ->where('role_in_ticket', 'leader')
+      ->where('role_in_ticket', UserRoles::LEADER->value)
       ->first();
 
     if (
       !($leader && $leader->user_id === $user->id) &&
-      !$user->hasRole('admin') &&
+      !$user->hasRole(UserRoles::ADMIN->value) &&
       $task->assigned_to !== $user->id
     ) {
       throw new Exception('You are not authorized to update this task', Response::HTTP_FORBIDDEN);
@@ -128,7 +129,7 @@ class TaskService
     $task = Task::findOrFail($id);
 
     $staff = User::findOrFail($staffId);
-    if (!$staff->hasRole('staff')) {
+    if (!$staff->hasRole(UserRoles::STAFF->value)) {
       throw new Exception('User must have staff role to be assigned to a task', Response::HTTP_BAD_REQUEST);
     }
 
@@ -210,7 +211,7 @@ class TaskService
 
     $isLeader = $task->ticket->participants()
       ->where('user_id', auth()->id())
-      ->where('role_in_ticket', 'leader')
+      ->where('role_in_ticket', UserRoles::LEADER->value)
       ->exists();
 
     if (!$isLeader) {
@@ -246,7 +247,7 @@ class TaskService
 
     $isLeader = $task->ticket->participants()
       ->where('user_id', auth()->id())
-      ->where('role_in_ticket', 'leader')
+      ->where('role_in_ticket', UserRoles::LEADER->value)
       ->exists();
 
     if (!$isLeader) {
@@ -383,7 +384,7 @@ class TaskService
     // Check if user is leader in ticket participants
     $isLeader = $ticket->participants()
       ->where('user_id', $user->id)
-      ->where('role_in_ticket', 'leader')
+      ->where('role_in_ticket', UserRoles::LEADER->value)
       ->exists();
 
     if (!$isLeader) {
@@ -427,7 +428,7 @@ class TaskService
     // Check if user is assigned to this task
     $isAssignedStaff = $ticket->participants()
       ->where('user_id', $user->id)
-      ->where('role_in_ticket', 'staff')
+      ->where('role_in_ticket', UserRoles::STAFF->value)
       ->whereNull('left_at')
       ->exists();
 
@@ -464,10 +465,10 @@ class TaskService
     // Verify user is a leader for this ticket
     $isLeader = $task->ticket->participants()
       ->where('user_id', $user->id)
-      ->where('role_in_ticket', 'leader')
+      ->where('role_in_ticket', UserRoles::LEADER->value)
       ->exists();
 
-    if (!$isLeader && !$user->hasRole('admin')) {
+    if (!$isLeader && !$user->hasRole(UserRoles::ADMIN->value)) {
       throw new Exception('Only ticket leaders can mark tasks as complete', Response::HTTP_FORBIDDEN);
     }
 
