@@ -95,4 +95,14 @@ class TicketController extends Controller
             'Ticket status changed to Client Approved successfully'
         );
     }
+
+    public function checkAndCloseTicket(string $id)
+    {
+        $ticket = $this->ticketService->checkAndCloseTicket($id);
+
+        return $this->success(
+            new TicketResource($ticket),
+            'Ticket status checked successfully'
+        );
+    }
 }

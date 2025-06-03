@@ -1,25 +1,25 @@
 @extends('mails.layout')
 
-
 @section('title')
-<h2>Your Support Ticket Has Been Created</h2>
+<h2>Support Ticket Confirmation</h2>
 @endsection
 
 @section('content')
-<p>Dear {{ $ticket->client->name }},</p>
+<h1>Hello {{ $ticket->client->name }},</h1>
 
-<p>We’ve received your request and created a new support ticket: <strong>#{{ $ticket->subject }}</strong>.</p>
+<p>Thank you for contacting {{ config('app.name') }}. We’ve received your request and created a support ticket.</p>
 
-<p><strong>Details of your request:</strong></p>
-<ul>
-    <li><strong>Subject:</strong> {{ $ticket->description }}</li>
-    <li><strong>Created on:</strong> {{ $ticket->created_at->format('d M Y H:i') }}</li>
-    <li><strong>Last updated:</strong> {{ $ticket->updated_at->format('d M Y H:i') }}</li>
-</ul>
+<p>This email is to confirm that your ticket has been successfully submitted to our system. A member of our team will review it shortly.</p>
 
-<p>You can reply to this email if you have more information to share or questions about your ticket.</p>
+<div class="ticket-details">
+    <p><strong>Ticket ID:</strong> {{ $ticket->id }}</p>
+    <p><strong>Subject:</strong> {{ $ticket->subject }}</p>
+    <p><strong>Created At:</strong> {{ $ticket->created_at->format('F j, Y, g:i a') }}</p>
+    @if(!empty($ticket->description))
+    <p><strong>Description:</strong><br>{{ $ticket->description }}</p>
+    @endif
+</div>
 
-<p>Thank you for reaching out.<br>
-Best regards,<br>
-<strong>Support Team</strong></p>
+<p>If you have any additional information to provide, simply reply to this email and your response will be added to the ticket thread automatically.</p>
+<p>Thank you again for reaching out to us.<br>The {{ config('app.name') }} Support Team</p>
 @endsection

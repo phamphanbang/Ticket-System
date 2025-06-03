@@ -11,6 +11,7 @@ use App\Constants\UserRoles;
 use App\Mail\ClientTicketAwaitingApproval;
 use App\Mail\ClientTicketCreated;
 use App\Mail\ClientTicketProcessing;
+use App\Mail\TicketClosed;
 use App\Models\Task;
 use App\Models\Ticket;
 use App\Models\TicketAuditLog;
@@ -417,6 +418,55 @@ class TicketService
       ['internal_status' => $ticket->internal_status],
       'All tasks ready for execution review'
     );
+  }
+
+  public function checkAndCloseTicket(string $id)
+  {
+    $ticket = Ticket::findOrFail($id);
+    TicketValidator::validateUserIsLeader(
+      $ticket,
+      null,
+      'Only ticket leaders can close tickets'
+    );
+
+    if ($ticket->internal_status !== InternalStatus::COMPLETED->value) {
+      throw new Exception(
+        'Ticket must be in Completed status to proceed',
+        Response::HTTP_BAD_REQUEST
+      );
+    }
+
+    if ($ticket->external_status !== ExternalStatus::COMPLETED->value) {
+      throw new Exception(
+        'Ticket must be in Completed status to proceed',
+        Response::HTTP_BAD_REQUEST
+      );
+    }
+
+    $oldStatuses = [
+      'internal_status' => $ticket->internal_status,
+      'external_status' => $ticket->external_status
+    ];
+
+    $ticket->update([
+      'internal_status' => InternalStatus::CLOSED->value,
+      'external_status' => ExternalStatus::CLOSED->value,
+      'closed_at' => now()
+    ]);
+
+    $this->createAuditLog(
+      $ticket->id,
+      'status',
+      $oldStatuses,
+      [
+        'internal_status' => $ticket->internal_status,
+        'external_status' => $ticket->external_status
+      ],
+      'Ticket closed by leader'
+    );
+
+    Mail::to($ticket->client->email)->queue(new TicketClosed($ticket));
+    return $ticket;
   }
 
   public function getTicketById($id)
