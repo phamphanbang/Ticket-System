@@ -7,7 +7,7 @@ use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use App\Http\Requests\StoreTicketParticipantRequest;
 use App\Services\TicketService;
-use Illuminate\Support\Facades\Request;
+use Illuminate\Http\Request;
 
 class TicketParticipantController extends Controller
 {
