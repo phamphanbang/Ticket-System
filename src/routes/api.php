@@ -21,11 +21,9 @@ Route::middleware(['auth:sanctum','api'])->group(function () {
     Route::put('/{id}', [TicketController::class, 'update']);
     Route::delete('/{id}', [TicketController::class, 'destroy']);
     
-    // Ticket status transitions
-    Route::post('/{id}/awaiting-client-approval', [TicketController::class, 'awaitingForClientApproval']);
-    Route::post('/{id}/client-approve', [TicketController::class, 'clientApprove']);
-    
-    // Nested task routes
+    Route::post('/{id}/execute', [TicketController::class, 'executeTicket']);
+    Route::post('/{id}/close', [TicketController::class, 'checkAndCloseTicket']);
+    Route::get('/{id}/audit-logs', [TicketController::class, 'getTicketAuditLogs']);
     Route::prefix('/{id}/tasks')->group(function () {
         Route::get('/', [TaskController::class, 'index']);
         Route::post('/', [TaskController::class, 'store']);
@@ -42,6 +40,7 @@ Route::prefix('tasks')->group(function () {
     Route::get('/{id}', [TaskController::class, 'show']);
     Route::put('/{id}', [TaskController::class, 'update']);
     Route::delete('/{id}', [TaskController::class, 'destroy']);
+    Route::get('/{id}/audit-logs', [TaskController::class, 'getTaskAuditLogs']);
     
     // Task status transitions
     Route::post('/{id}/assign', [TaskController::class, 'assignStaff']);

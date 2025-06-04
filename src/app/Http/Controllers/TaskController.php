@@ -129,4 +129,10 @@ class TaskController extends Controller
         $this->taskService->destroy($id);
         return $this->success(null, 'Task deleted successfully', 204);
     }
+
+    public function getTaskAuditLogs(string $id): JsonResponse
+    {
+        $logs = $this->taskService->getTaskAuditLogs($id);
+        return $this->success($logs, 'Task audit logs retrieved successfully');
+    }
 }

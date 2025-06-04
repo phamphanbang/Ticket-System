@@ -3,9 +3,12 @@
 namespace App\Validators;
 
 use App\Constants\TicketStatus;
+use App\Constants\UserRoles;
 use App\Exceptions\InvalidTicketAssignmentException;
 use App\Models\Ticket;
+use Exception;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Symfony\Component\HttpFoundation\Response;
 
 class TicketValidator 
 {
@@ -15,34 +18,25 @@ class TicketValidator
     throw new ModelNotFoundException(__('messages.model_not_found', ['model' => 'Ticket']));
   }
 
-  public static function checkTicketStatus(Ticket $ticket, $status)
-  {
-    if ($ticket->status->value == $status) return;
-    $errorMessage = "";
-    switch ($status) {
-      case TicketStatus::New->value:
-        $errorMessage = __('error.ticket_assigned_not_new');
-        break;
-      case TicketStatus::InProgress->value:
-        $errorMessage = __('error.ticket_not_in_progress');
-        break;
-      case TicketStatus::Resolved->value:
-        $errorMessage = __('error.ticket_not_resolved');
-        break;
-      default:
-        break;
-    }
-    throw new InvalidTicketAssignmentException($errorMessage);
-  }
+  public static function validateUserIsLeader(
+    $ticket,
+    ?string $userId = null,
+    ?string $message = null
+  ): void {
+    $userId = $userId ?? auth()->id();
+    $message = $message ?? 'Only ticket leaders can do this action';
 
-  public static function checkStaffIsAssignedToTicket(Ticket $ticket, $staff_id)
-  {
-    if ($ticket->assign_to == $staff_id) return;
-    throw new InvalidTicketAssignmentException(__('error.ticket_assigned_not_your_ticket'));
-  }
-  public static function checkTicketNotAssignedToTheSameStaff(Ticket $ticket, $staff_id)
-  {
-    if ($ticket->assign_to != $staff_id) return;
-    throw new InvalidTicketAssignmentException(__('error.ticket_assigned_same_staff'));
+    $isLeader = $ticket->participants()
+      ->where('user_id', $userId)
+      ->where('role_in_ticket', UserRoles::LEADER->value)
+      ->exists();
+
+    $isAdmin = auth()->user()->hasAnyRole([
+      UserRoles::ADMIN->value,
+    ]);
+
+    if (!$isLeader && !$isAdmin) {
+      throw new Exception($message, Response::HTTP_FORBIDDEN);
+    }
   }
 }

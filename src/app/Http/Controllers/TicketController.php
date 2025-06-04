@@ -75,24 +75,33 @@ class TicketController extends Controller
         );
     }
 
-    public function awaitingForClientApproval(string $id)
+    public function executeTicket(string $id)
     {
-        $ticket = $this->ticketService->changeToAwaitingClientApproval($id);
-
+        $ticket = $this->ticketService->changeToExecutionTicket($id);
+        $this->taskService->changeTasksToExecution($id);
         return $this->success(
             new TicketResource($ticket),
-            'Ticket status changed to Awaiting Client Approval successfully'
+            'Ticket status changed to In Progress successfully'
         );
     }
 
-    public function clientApprove(string $id)
+    public function checkAndCloseTicket(string $id)
     {
-        $ticket = $this->ticketService->clientApprove($id);
-        $this->taskService->changeTasksToExecution($id);
+        $ticket = $this->ticketService->checkAndCloseTicket($id);
 
         return $this->success(
             new TicketResource($ticket),
-            'Ticket status changed to Client Approved successfully'
+            'Ticket status checked successfully'
+        );
+    }
+
+    public function getTicketAuditLogs(string $id)
+    {
+        $logs = $this->ticketService->getTicketAuditLogs($id);
+
+        return $this->success(
+            $logs,
+            'Ticket audit logs retrieved successfully'
         );
     }
 }

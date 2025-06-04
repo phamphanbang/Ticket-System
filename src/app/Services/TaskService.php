@@ -85,6 +85,20 @@ class TaskService
       Mail::to($task->assignedUser->email)->queue(new TaskAssigned($task));
     }
 
+    $this->createTaskAuditLog(
+      $task->id,
+      'task_created',
+      [],
+      [
+        'title' => $task->title,
+        'description' => $task->description,
+      ],
+      'Task created',
+      'create',
+      $task->estimation_status,
+      $task->phase
+    );
+
     return $task;
   }
 
@@ -111,12 +125,15 @@ class TaskService
     }
     $task = Task::findOrFail($id);
     $task->update($data);
-    $this->createAuditLog(
+    $this->createTaskAuditLog(
       $task->id,
       'task_updated',
       $task->getOriginal(),
       $task->getChanges(),
-      'Task updated'
+      'Task updated',
+      'update',
+      $task->estimation_status,
+      $task->phase
     );
     return $task->fresh();
   }
@@ -156,6 +173,22 @@ class TaskService
       ],
       $oldStaffId ? 'Task reassigned to new staff' : 'Task assigned to staff'
     );
+    $this->createTaskAuditLog(
+      $task->id,
+      'staff_assignment',
+      [
+        'assigned_to' => $oldStaffId,
+        'estimation_status' => $task->getOriginal('estimation_status')
+      ],
+      [
+        'assigned_to' => $staffId,
+        'estimation_status' => $task->estimation_status
+      ],
+      $oldStaffId ? 'Task reassigned to new staff' : 'Task assigned to staff',
+      'update',
+      $task->estimation_status,
+      $task->phase
+    );
     //Mail::to($staff->email)->queue(new TaskAssigned($task));
 
     if ($oldStaff) {
@@ -191,14 +224,16 @@ class TaskService
       'estimation_status' => EstimationStatus::READY_FOR_REVIEW->value
     ]);
 
-    $this->createAuditLog(
+    $this->createTaskAuditLog(
       $task->id,
       'estimation_status',
       ['estimation_status' => $oldEstimationStatus],
       ['estimation_status' => $task->estimation_status],
-      'Task marked as ready for estimation review'
+      'Task marked as ready for estimation review',
+      'ready_to_review',
+      $task->estimation_status,
+      $task->phase
     );
-
     return $task->fresh();
   }
 
@@ -217,15 +252,16 @@ class TaskService
     $task->update([
       'estimation_status' => EstimationStatus::NEEDS_REVISION->value
     ]);
-
-    $this->createAuditLog(
+    $this->createTaskAuditLog(
       $task->id,
       'estimation_status',
-      $oldEstimationStatus,
+      ['estimation_status' => $oldEstimationStatus],
+      ['estimation_status' => $task->estimation_status],
+      'Task marked for revision',
+      'need_revision',
       $task->estimation_status,
-      $revisionReason
+      $task->phase
     );
-
     // Notify assigned staff member
     if ($task->assignedTo && $task->assignedTo->email) {
       // Mail::to($task->assignedTo->email)
@@ -251,19 +287,20 @@ class TaskService
       'estimation_status' => EstimationStatus::FINALIZED->value
     ]);
 
-    $this->createAuditLog(
+    $this->createTaskAuditLog(
       $task->id,
       'estimation_status',
-      $oldEstimationStatus,
+      ['estimation_status' => $oldEstimationStatus],
+      ['estimation_status' => $task->estimation_status],
+      'Task estimation approved',
+      'approve_estimate',
       $task->estimation_status,
-      'Task estimation approved'
+      $task->phase
     );
 
     if ($task->assignedTo && $task->assignedTo->email) {
       // Mail::to($task->assignedTo->email)
-      //   ->queue(new TaskEstimateApproved($task));
     }
-
     return $task->fresh();
   }
 
@@ -280,14 +317,16 @@ class TaskService
         'execution_status' => ExecutionStatus::NOT_STARTED->value
       ]);
 
-      $this->createAuditLog(
+      $this->createTaskAuditLog(
         $task->id,
         'phase',
         $oldPhase,
         $task->phase,
-        'Task moved to execution phase'
+        'Task moved to execution phase',
+        'start_execution_phase',
+        $task->execution_status,
+        $task->phase
       );
-
       if ($task->assignedTo && $task->assignedTo->email) {
         // Mail::to($task->assignedTo->email)
         //   ->queue(new TaskMovedToExecution($task));
@@ -316,18 +355,24 @@ class TaskService
     $task->update([
       'execution_status' => ExecutionStatus::IN_PROGRESS->value
     ]);
-    $reason = $task->execution_status === ExecutionStatus::NOT_STARTED->value ?
-      'Task execution started' :
-      'Task unblocked and execution resumed';
+    if ($task->execution_status === ExecutionStatus::NOT_STARTED->value) {
+      $reason = 'Task execution started';
+      $changeType = 'start_execution';
+    } else {
+      $reason = 'Task unblocked and execution resumed';
+      $changeType = 'resume_execution';
+    }
 
-    $this->createAuditLog(
+    $this->createTaskAuditLog(
       $task->id,
       'execution_status',
       ['execution_status' => $oldExecutionStatus],
       ['execution_status' => $task->execution_status],
-      $reason
+      $reason,
+      $changeType,
+      $task->execution_status,
+      $task->phase
     );
-
     return $task->fresh();
   }
 
@@ -354,17 +399,16 @@ class TaskService
       'execution_status' => ExecutionStatus::BLOCKED->value
     ]);
 
-    $this->createAuditLog(
+    $this->createTaskAuditLog(
       $task->id,
       'execution_status',
       ['execution_status' => $oldExecutionStatus],
-      [
-        'execution_status' => $task->execution_status,
-        'reason' => $reason
-      ],
-      'Task blocked: ' . $reason
+      ['execution_status' => $task->execution_status],
+      'Task blocked: ' . $reason,
+      'block_task',
+      $task->execution_status,
+      $task->phase
     );
-
     return $task->fresh();
   }
 
@@ -392,7 +436,7 @@ class TaskService
       'execution_status' => ExecutionStatus::CHANGE_REQUESTED->value
     ]);
 
-    $this->createAuditLog(
+    $this->createTaskAuditLog(
       $task->id,
       'change_request',
       $oldData,
@@ -400,9 +444,11 @@ class TaskService
         'description' => $task->description,
         'execution_status' => $task->execution_status
       ],
-      'Task description updated by leader'
+      'Task description updated by leader',
+      'change_request',
+      $task->execution_status,
+      $task->phase
     );
-
     return $task->fresh();
   }
 
@@ -426,14 +472,16 @@ class TaskService
       'execution_status' => ExecutionStatus::READY_FOR_REVIEW->value
     ]);
 
-    $this->createAuditLog(
+    $this->createTaskAuditLog(
       $task->id,
-      'execution_status_change',
+      'execution_status',
       ['execution_status' => $oldExecutionStatus],
       ['execution_status' => $task->execution_status],
-      'Task marked as ready for review by leader'
+      'Task marked as ready for review by leader',
+      'ready_for_review',
+      $task->execution_status,
+      $task->phase
     );
-
     return $task->fresh();
   }
 
@@ -449,24 +497,64 @@ class TaskService
 
     $oldExecutionStatus = $task->execution_status;
 
+    $startedAudit = $task->audits()
+        ->where('change_type', 'start_execution_phase')
+        ->orderBy('created_at')
+        ->first();
+
+    if (!$startedAudit) {
+        throw new Exception('Could not determine task execution start time', Response::HTTP_BAD_REQUEST);
+    }
+
+    $executionHours = now()->diffInHours($startedAudit->created_at);
+
     $task->update([
       'execution_status' => ExecutionStatus::COMPLETED->value,
-      'completed_at' => now()
+      'actual_time' => $executionHours
     ]);
 
-    $this->createAuditLog(
+    $this->createTaskAuditLog(
       $task->id,
-      'execution_status_change',
+      'execution_status',
       ['execution_status' => $oldExecutionStatus],
       ['execution_status' => $task->execution_status],
-      'Task execution marked as complete by leader'
+      'Task execution marked as complete by leader',
+      'complete_execution',
+      $task->execution_status,
+      $task->phase
     );
-
     return $task->fresh();
   }
   public function destroy(string $id): bool
   {
     $task = Task::findOrFail($id);
     return $task->delete();
+  }
+
+  public function getTaskAuditLogs(string $id): array
+  {
+    $task = Task::findOrFail($id);
+    $ticket = $task->ticket;
+
+    $isParticipant = $ticket->participants()
+        ->where('user_id', auth()->id())
+        ->exists();
+
+    if (!$isParticipant && !auth()->user()->hasRole(UserRoles::ADMIN->value)) {
+        throw new Exception(
+            'Only ticket participants can view audit logs',
+            Response::HTTP_FORBIDDEN
+        );
+    }
+
+    $logs = $task->audits()
+      ->with(['changedBy'])
+      ->orderBy('created_at', 'desc')
+      ->get();
+
+    return [
+      'data' => $logs,
+      'total' => $logs->count()
+    ];
   }
 }
