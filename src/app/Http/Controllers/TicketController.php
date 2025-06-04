@@ -94,4 +94,14 @@ class TicketController extends Controller
             'Ticket status checked successfully'
         );
     }
+
+    public function getTicketAuditLogs(string $id)
+    {
+        $logs = $this->ticketService->getTicketAuditLogs($id);
+
+        return $this->success(
+            $logs,
+            'Ticket audit logs retrieved successfully'
+        );
+    }
 }

@@ -23,7 +23,7 @@ Route::middleware(['auth:sanctum','api'])->group(function () {
     
     Route::post('/{id}/execute', [TicketController::class, 'executeTicket']);
     Route::post('/{id}/close', [TicketController::class, 'checkAndCloseTicket']);
-
+    Route::get('/{id}/audit-logs', [TicketController::class, 'getTicketAuditLogs']);
     Route::prefix('/{id}/tasks')->group(function () {
         Route::get('/', [TaskController::class, 'index']);
         Route::post('/', [TaskController::class, 'store']);

@@ -449,4 +449,30 @@ class TicketService
 
     return $ticket->load(['client', 'participants']);
   }
+
+  public function getTicketAuditLogs(string $id): array
+  {
+    $ticket = Ticket::findOrFail($id);
+
+    $isParticipant = $ticket->participants()
+        ->where('user_id', auth()->id())
+        ->exists();
+
+    if (!$isParticipant && !auth()->user()->hasRole(UserRoles::ADMIN->value)) {
+        throw new Exception(
+            'Only ticket participants can view audit logs',
+            Response::HTTP_FORBIDDEN
+        );
+    }
+
+    $logs = $ticket->logs()
+      ->with(['changedBy'])
+      ->orderBy('created_at', 'desc')
+      ->get();
+
+    return [
+      'data' => $logs,
+      'total' => $logs->count()
+    ];
+  }
 }
