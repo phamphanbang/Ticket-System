@@ -15,11 +15,15 @@ class Ticket extends Model
     public $incrementing = false;
     
     protected $fillable = [
-        'subject',
+        'title',
         'description',
-        'internal_status',
-        'external_status',
-        'client_id'
+        'status',
+        'client_id',
+        'mail_created_id',
+        'created_by',
+        'current_processor_id',
+        'responsible_user_id',
+        'closed_at'
     ];
 
     protected $casts = [
@@ -42,28 +46,42 @@ class Ticket extends Model
         return $this->hasMany(TicketAuditLog::class);
     }
 
-    public function tasks()
-    {
-        return $this->hasMany(Task::class);
-    }
-
     public function receivedEmails()
     {
         return $this->hasMany(ReceivedEmail::class);
     }
 
-    public function participants()
+    public function createdBy()
     {
-        return $this->hasMany(TicketParticipant::class);
+        return $this->belongsTo(User::class, 'created_by');
     }
 
-    public function scopeWithInternalStatus($query, $status)
+    public function currentProcessor()
     {
-        return $query->where('internal_status', $status);
+        return $this->belongsTo(User::class, 'current_processor_id');
     }
 
-    public function scopeWithExternalStatus($query, $status) 
+    public function responsibleUser()
     {
-        return $query->where('external_status', $status);
+        return $this->belongsTo(User::class, 'responsible_user_id');
     }
+
+    public function closedBy()
+    {
+        return $this->belongsTo(User::class, 'closed_by');
+    }
+
+    public function mailCreated()
+    {
+        return $this->belongsTo(ReceivedEmail::class, 'mail_created_id');
+    }
+
+    public function scopeWithStatus($query, $status)
+    {
+        return $query->where('status', $status);
+    }
+
+    
+
+
 }

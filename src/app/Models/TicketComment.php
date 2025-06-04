@@ -10,6 +10,9 @@ class TicketComment extends Model
 {
     use HasUuids;
 
+    public $incrementing = false;
+    protected $keyType = 'string';
+
     /**
      * The attributes that are mass assignable.
      *
@@ -18,8 +21,7 @@ class TicketComment extends Model
     protected $fillable = [
         'ticket_id',
         'user_id',
-        'comment',
-        'is_client_feedback',
+        'content',
         'created_at',
     ];
 
@@ -29,7 +31,6 @@ class TicketComment extends Model
      * @var array<string, string>
      */
     protected $casts = [
-        'is_client_feedback' => 'boolean',
         'created_at' => 'datetime',
     ];
 
@@ -48,4 +49,11 @@ class TicketComment extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    public function attachments()
+    {
+        return $this->hasMany(Attachment::class);
+    }
+
+    
 } 
