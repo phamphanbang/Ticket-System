@@ -22,7 +22,6 @@ return new class extends Migration
             $table->longText('body');
             $table->json('attachments')->nullable();
             $table->enum('type', ['new_ticket', 'reply', 'feedback', 'unknown']);
-            $table->enum('status', ['pending', 'processed', 'ignored', 'error']);
             $table->timestamp('received_at');
             $table->timestamps();
         });
