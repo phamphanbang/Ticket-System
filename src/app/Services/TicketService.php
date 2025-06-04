@@ -437,6 +437,8 @@ class TicketService
       'Ticket closed by leader',
       'closed',
     );
+
+    Mail::to($ticket->client->email)->queue(new TicketClosed($ticket));
     return $ticket;
   }
 
