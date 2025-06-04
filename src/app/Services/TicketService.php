@@ -103,16 +103,16 @@ class TicketService
 
     $ticket = Ticket::create($data);
 
-    $this->createAuditLog(
+    $this->createTicketAuditLog(
       $ticket->id,
-      'ticket_created',
+      'status',
       [],
       [
-        'title' => $ticket->title,
         'internal_status' => $ticket->internal_status,
-        'external_status' => $ticket->external_status,
+        'external_status' => $ticket->external_status
       ],
-      'Ticket created'
+      'Ticket created',
+      'new',
     );
 
     Mail::to($ticket->client->email)
@@ -157,7 +157,7 @@ class TicketService
 
     $ticket->update($data);
 
-    $this->createAuditLog(
+    $this->createTicketAuditLog(
       $ticket->id,
       'ticket_updated',
       $oldData,
@@ -167,9 +167,9 @@ class TicketService
         'priority' => $ticket->priority,
         'client_email' => $ticket->client->email
       ],
-      'Ticket updated'
+      'Ticket updated',
+      'update',
     );
-
     return $ticket->fresh();
   }
 
@@ -191,12 +191,13 @@ class TicketService
       'internal_status' => InternalStatus::AWAITING_ESTIMATION_APPROVAL->value
     ]);
 
-    $this->createAuditLog(
+    $this->createTicketAuditLog(
       $ticket->id,
       'status',
       ['internal_status' => $oldInternalStatus],
       ['internal_status' => $ticket->internal_status],
-      'All tasks ready for estimation review'
+      'All tasks ready for estimation review',
+      'awaiting_estimation_approval',
     );
 
     $leaders = $ticket->participants()->where('role_in_ticket', UserRoles::LEADER->value)->get();
@@ -241,11 +242,23 @@ class TicketService
       'Initial ticket status updated to Processing'
     );
 
-    // Mail::to($ticket->client->email)
-    //   ->queue(new ClientTicketProcessing($ticket));
-
+    $this->createTicketAuditLog(
+      $ticket->id,
+      'status',
+      [
+        'internal_status' => $oldInternalStatus,
+        'external_status' => $oldExternalStatus
+      ],
+      [
+        'internal_status' => $ticket->internal_status,
+        'external_status' => $ticket->external_status
+      ],
+      'Initial ticket status updated to Processing',
+      'processing',
+    );
     return $ticket;
   }
+
     public function changeToExecutionTicket(string $ticket_id): Ticket
   {
     $ticket = Ticket::findOrFail($ticket_id);
@@ -273,7 +286,7 @@ class TicketService
       'external_status' => ExternalStatus::PROCESSING->value
     ]);
 
-    $this->createAuditLog(
+    $this->createTicketAuditLog(
       $ticket->id,
       'status',
       [
@@ -284,9 +297,9 @@ class TicketService
         'internal_status' => $ticket->internal_status,
         'external_status' => $ticket->external_status
       ],
-      'Changed to In Progress status'
+      'Changed to In Progress status',
+      'in_progress',
     );
-
     // Mail::to($ticket->client->email)->queue(new ClientTicketAwaitingApproval($ticket));
     Mail::to($ticket->client->email)
     ->queue(new ClientTicketProcessing($ticket));
@@ -316,7 +329,7 @@ class TicketService
         'external_status' => ExternalStatus::COMPLETED->value
       ]);
 
-      $this->createAuditLog(
+      $this->createTicketAuditLog(
         $ticket->id,
         'status',
         [
@@ -327,9 +340,9 @@ class TicketService
           'internal_status' => $ticket->internal_status,
           'external_status' => $ticket->external_status
         ],
-        'Ticket automatically marked as completed - all tasks finished'
+        'Ticket automatically marked as completed - all tasks finished',
+        'completed',
       );
-
       return $ticket;
     }
 
@@ -367,13 +380,16 @@ class TicketService
       'internal_status' => InternalStatus::UNDER_REVIEW->value
     ]);
 
-    $this->createAuditLog(
+    $this->createTicketAuditLog(
       $ticket->id,
       'status',
       ['internal_status' => $oldInternalStatus],
       ['internal_status' => $ticket->internal_status],
-      'All tasks ready for execution review'
+      'All tasks ready for execution review',
+      'under_review',
     );
+
+    //notify leader
   }
 
   public function checkAndCloseTicket(string $id)
@@ -410,18 +426,17 @@ class TicketService
       'closed_at' => now()
     ]);
 
-    $this->createAuditLog(
+    $this->createTicketAuditLog(
       $ticket->id,
       'status',
       $oldStatuses,
       [
-        'internal_status' => $ticket->internal_status,
+        'internal_status' => $ticket->internal_status, 
         'external_status' => $ticket->external_status
       ],
-      'Ticket closed by leader'
+      'Ticket closed by leader',
+      'closed',
     );
-
-    Mail::to($ticket->client->email)->queue(new TicketClosed($ticket));
     return $ticket;
   }
 

@@ -19,14 +19,14 @@ class TicketValidator
   }
 
   public static function validateUserIsLeader(
-    $task,
+    $ticket,
     ?string $userId = null,
     ?string $message = null
   ): void {
     $userId = $userId ?? auth()->id();
     $message = $message ?? 'Only ticket leaders can do this action';
 
-    $isLeader = $task->ticket->participants()
+    $isLeader = $ticket->participants()
       ->where('user_id', $userId)
       ->where('role_in_ticket', UserRoles::LEADER->value)
       ->exists();
