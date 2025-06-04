@@ -27,12 +27,12 @@ enum TicketStatus :string
     public static function all(): array
     {
         return [
-            self::NEW,
-            self::IN_PROGRESS,
-            self::WAITING,
-            self::ASSIGNED,
-            self::COMPLETE,
-            self::FORCE_CLOSED,
+            self::NEW->value,
+            self::IN_PROGRESS->value,
+            self::WAITING->value,
+            self::ASSIGNED->value,
+            self::COMPLETE->value,
+            self::FORCE_CLOSED->value,
         ];
     }
 
