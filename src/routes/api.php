@@ -40,6 +40,7 @@ Route::prefix('tasks')->group(function () {
     Route::get('/{id}', [TaskController::class, 'show']);
     Route::put('/{id}', [TaskController::class, 'update']);
     Route::delete('/{id}', [TaskController::class, 'destroy']);
+    Route::get('/{id}/audit-logs', [TaskController::class, 'getTaskAuditLogs']);
     
     // Task status transitions
     Route::post('/{id}/assign', [TaskController::class, 'assignStaff']);

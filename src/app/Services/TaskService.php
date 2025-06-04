@@ -530,4 +530,31 @@ class TaskService
     $task = Task::findOrFail($id);
     return $task->delete();
   }
+
+  public function getTaskAuditLogs(string $id): array
+  {
+    $task = Task::findOrFail($id);
+    $ticket = $task->ticket;
+
+    $isParticipant = $ticket->participants()
+        ->where('user_id', auth()->id())
+        ->exists();
+
+    if (!$isParticipant && !auth()->user()->hasRole(UserRoles::ADMIN->value)) {
+        throw new Exception(
+            'Only ticket participants can view audit logs',
+            Response::HTTP_FORBIDDEN
+        );
+    }
+
+    $logs = $task->audits()
+      ->with(['changedBy'])
+      ->orderBy('created_at', 'desc')
+      ->get();
+
+    return [
+      'data' => $logs,
+      'total' => $logs->count()
+    ];
+  }
 }
