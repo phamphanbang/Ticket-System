@@ -11,16 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('ticket_audit_logs', function (Blueprint $table) {
+        Schema::create('ticket_comments', function (Blueprint $table) {
             $table->uuid('id')->primary();
+            $table->foreignUuid('user_id')->constrained('users');
             $table->foreignUuid('ticket_id')->constrained('tickets');
-            $table->foreignUuid('changed_by')->nullable()->constrained('users');
-            $table->string('field_changed');
-            $table->text('old_value');
-            $table->text('new_value');
-            $table->text('reason')->nullable();
-            $table->string('change_type');
-            $table->timestamp('created_at');
+            $table->text('content');
+            $table->timestamps();
         });
     }
 
@@ -29,6 +25,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('ticket_audit_logs');
+        Schema::dropIfExists('ticket_comments');
     }
 };

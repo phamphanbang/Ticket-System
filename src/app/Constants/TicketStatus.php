@@ -2,50 +2,38 @@
 
 namespace App\Constants;
 
-enum TicketStatus: int
+enum TicketStatus :string
 {
-    case New = 1;
-    case InProgress = 2;
-    case Resolved = 3;
-    case Closed = 4;
+    
+    case NEW = 'new';
+    case IN_PROGRESS = 'in_progress';
+    case WAITING = 'waiting';
+    case ASSIGNED = 'assigned';
+    case COMPLETE = 'complete';
+    case FORCE_CLOSED = 'force_closed';
 
     public function label(): string
     {
         return match ($this) {
-            self::New => 'New',
-            self::InProgress => 'In Progress',
-            self::Resolved => 'Resolved',
-            self::Closed => 'Closed',
+            self::NEW => 'New',
+            self::IN_PROGRESS => 'In Progress',
+            self::WAITING => 'Waiting',
+            self::ASSIGNED => 'Assigned',
+            self::COMPLETE => 'Complete',
+            self::FORCE_CLOSED => 'Force Closed',
         };
     }
 
-    public function column_label(): string
-    {
-        return match ($this) {
-            self::New => 'new',
-            self::InProgress => 'in_progress',
-            self::Resolved => 'resolved',
-            self::Closed => 'closed',
-        };
-    }
-
-    public static function list()
+    public static function all(): array
     {
         return [
-            self::New,
-            self::InProgress,
-            self::Resolved,
-            self::Closed,
+            self::NEW->value,
+            self::IN_PROGRESS->value,
+            self::WAITING->value,
+            self::ASSIGNED->value,
+            self::COMPLETE->value,
+            self::FORCE_CLOSED->value,
         ];
     }
 
-    public static function listValue()
-    {
-        return [
-            self::New->value,
-            self::InProgress->value,
-            self::Resolved->value,
-            self::Closed->value,
-        ];
-    }
 }

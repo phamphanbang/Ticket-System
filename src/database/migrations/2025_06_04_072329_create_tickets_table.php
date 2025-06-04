@@ -1,5 +1,6 @@
 <?php
 
+use App\Constants\TicketStatus;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -14,11 +15,15 @@ return new class extends Migration
         Schema::create('tickets', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->foreignUuid('client_id')->constrained('clients');
-            $table->string('subject');
+            $table->enum('status', TicketStatus::all())->default(TicketStatus::NEW->value);
+            $table->string('title');
             $table->text('description');
-            $table->enum('internal_status', ['new','in_analysis','awaiting_estimation_approval','awaiting_client_approval','in_progress','under_review','completed','closed']);
-            $table->enum('external_status', ['received','processing','awaiting_your_approval','completed','closed']);
+            $table->foreignUuid('mail_created_id')->nullable()->constrained('received_emails');
+            $table->foreignUuid('created_by')->constrained('users');
+            $table->foreignUuid('current_processor_id')->nullable()->constrained('users');
+            $table->foreignUuid('responsible_user_id')->nullable()->constrained('users');
             $table->timestamps();
+            $table->timestamp('closed_at')->nullable();
         });
     }
 
