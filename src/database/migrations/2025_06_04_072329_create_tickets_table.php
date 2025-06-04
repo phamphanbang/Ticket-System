@@ -18,7 +18,7 @@ return new class extends Migration
             $table->enum('status', TicketStatus::all())->default(TicketStatus::NEW->value);
             $table->string('title');
             $table->text('description');
-            $table->foreignUuid('mail_created_id')->nullable()->constrained('received_mails');
+            $table->foreignUuid('mail_created_id')->nullable()->constrained('received_emails');
             $table->foreignUuid('created_by')->constrained('users');
             $table->foreignUuid('current_processor_id')->nullable()->constrained('users');
             $table->foreignUuid('responsible_user_id')->nullable()->constrained('users');

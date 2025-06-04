@@ -15,7 +15,6 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->string('message_id')->unique();
             $table->string('in_reply_to')->nullable();
-            $table->foreignUuid('ticket_id')->nullable()->constrained('tickets');
             $table->string('from_email');
             $table->string('to_email');
             $table->string('subject');
