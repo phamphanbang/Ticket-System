@@ -1,4 +1,4 @@
-<?php 
+<?php
 
 namespace App\Validators;
 
@@ -10,7 +10,7 @@ use Exception;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Symfony\Component\HttpFoundation\Response;
 
-class TicketValidator 
+class TicketValidator
 {
   public static function checkTicketExists($ticket)
   {
@@ -18,25 +18,25 @@ class TicketValidator
     throw new ModelNotFoundException(__('messages.model_not_found', ['model' => 'Ticket']));
   }
 
-  public static function validateUserIsLeader(
-    $ticket,
-    ?string $userId = null,
-    ?string $message = null
-  ): void {
-    $userId = $userId ?? auth()->id();
-    $message = $message ?? 'Only ticket leaders can do this action';
+  public static function checkTicketBelongsToHolderOrStaff($ticket,$message)
+  {
+    $user = auth()->user();
+    if ($ticket->holder_id !== $user->id && $ticket->staff_id !== $user->id) {
+      throw new Exception(
+        $message,
+        Response::HTTP_FORBIDDEN
+      );
+    }
+  }
 
-    $isLeader = $ticket->participants()
-      ->where('user_id', $userId)
-      ->where('role_in_ticket', UserRoles::LEADER->value)
-      ->exists();
-
-    $isAdmin = auth()->user()->hasAnyRole([
-      UserRoles::ADMIN->value,
-    ]);
-
-    if (!$isLeader && !$isAdmin) {
-      throw new Exception($message, Response::HTTP_FORBIDDEN);
+  public static function checkTicketBelongsToHolder($ticket,$message)
+  {
+    $user = auth()->user();
+    if ($ticket->holder_id !== $user->id) {
+      throw new Exception(
+        $message,
+        Response::HTTP_FORBIDDEN
+      );
     }
   }
 }

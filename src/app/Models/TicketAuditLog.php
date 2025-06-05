@@ -19,13 +19,13 @@ class TicketAuditLog extends Model
      */
     protected $fillable = [
         'ticket_id',
-        'changed_by',
-        'field_changed',
-        'old_value',
-        'new_value',
-        'reason',
-        'change_type',
-        'created_at',
+        'action',
+        'status',
+        'to_status',
+        'holder_id',
+        'staff_id',
+        'start_at',
+        'end_at',
     ];
 
     /**
@@ -35,17 +35,8 @@ class TicketAuditLog extends Model
      */
     protected $casts = [
         'created_at' => 'datetime',
-    ];
-
-    /**
-     * The possible types of changes.
-     *
-     * @var array<string>
-     */
-    public const CHANGE_TYPES = [
-        'update',
-        'correction',
-        'scope_change',
+        'start_at' => 'datetime: Y-m-d H:i:s',
+        'end_at' => 'datetime: Y-m-d H:i:s',
     ];
 
     /**
@@ -56,11 +47,13 @@ class TicketAuditLog extends Model
         return $this->belongsTo(Ticket::class);
     }
 
-    /**
-     * Get the user who made the change.
-     */
-    public function changedBy(): BelongsTo
+    public function holder(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'changed_by');
+        return $this->belongsTo(User::class, 'holder_id');
     }
-} 
+
+    public function staff(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'staff_id');
+    }
+}
