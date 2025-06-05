@@ -2,20 +2,25 @@
 
 namespace App\Services;
 
+use App\Constants\AuditActions;
 use App\Constants\EstimationStatus;
 use App\Constants\ExecutionStatus;
 use App\Constants\ExternalStatus;
 use App\Constants\InternalStatus;
+use App\Constants\PaginateConstant;
 use App\Constants\TaskPhase;
+use App\Constants\TicketStatus;
 use App\Constants\UserRoles;
 use App\Mail\ClientTicketCreated;
 use App\Mail\ClientTicketProcessing;
 use App\Mail\TicketClosed;
 use App\Models\Task;
 use App\Models\Ticket;
+use App\Models\TicketAuditLog;
 use App\Traits\HasAuditLog;
 use App\Validators\TicketValidator;
 use Exception;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -34,15 +39,15 @@ class TicketService
   {
     $query = Ticket::query()->with(['client', 'participants']);
 
-    if (auth()->user()->hasRole(UserRoles::STAFF->value)) {
-      $query->whereHas('participants', function ($q) {
-        $q->where('user_id', auth()->id());
-      });
-    }
+    // if (auth()->user()->hasRole(UserRoles::STAFF->value)) {
+    //   $query->whereHas('participants', function ($q) {
+    //     $q->where('user_id', auth()->id());
+    //   });
+    // }
 
     if (isset($filters['search'])) {
       $query->where(function ($q) use ($filters) {
-        $q->where('subject', 'like', "%{$filters['search']}%")
+        $q->where('title', 'like', "%{$filters['search']}%")
           ->orWhere('description', 'like', "%{$filters['search']}%")
           ->orWhereHas('client', function ($q) use ($filters) {
             $q->where('name', 'like', "%{$filters['search']}%")
@@ -51,13 +56,6 @@ class TicketService
       });
     }
 
-    if (isset($filters['internal_status'])) {
-      $query->where('internal_status', $filters['internal_status']);
-    }
-
-    if (isset($filters['external_status'])) {
-      $query->where('external_status', $filters['external_status']);
-    }
 
     // if (isset($filters['created_by'])) {
     //   $query->where('created_by', $filters['created_by']);
@@ -70,8 +68,8 @@ class TicketService
       $query->latest();
     }
 
-    $perPage = $filters['limit'] ?? 15;
-    $page = $filters['page'] ?? 1;
+    $perPage = $filters['limit'] ?? PaginateConstant::DEFAULT_PER_PAGE->value;
+    $page = $filters['page'] ?? PaginateConstant::DEFAULT_PAGE->value;
 
     $paginator = $query->paginate($perPage, ['*'], 'page', $page);
 
@@ -85,36 +83,39 @@ class TicketService
     ];
   }
 
+  public function show(string $id): Ticket
+  {
+    $ticket = Ticket::where('id', $id)->first();
+    TicketValidator::checkTicketExists($ticket);
+
+    return $ticket->load(['client', 'staff', 'holder']);
+  }
+
   public function store(array $data)
   {
-    $user = auth()->user();
-    if ($user && $user->hasRole(UserRoles::STAFF->value)) {
-      throw new Exception('Only supporters and admins can create tickets', Response::HTTP_FORBIDDEN);
-    }
-
     $client = $this->clientService->createClient([
       'name' => explode('@', $data['client_email'])[0],
       'email' => $data['client_email']
     ]);
-
     $data['client_id'] = $client->id;
-    $data['internal_status'] = InternalStatus::NEW->value;
-    $data['external_status'] = ExternalStatus::RECEIVED->value;
+    $data['status'] = TicketStatus::NEW->value;
+    $data['holder_id'] = auth()->user()->id;
+    $ticket = DB::transaction(function () use ($data) {
+      $ticket = Ticket::create($data);
 
-    $ticket = Ticket::create($data);
+      TicketAuditLog::create([
+        'ticket_id' => $ticket->id,
+        'action' => AuditActions::CREATED->value,
+        'status' => $ticket->status,
+        'to_status' => null,
+        'holder_id' => $ticket->holder_id,
+        'staff_id' => $ticket->staff_id,
+        'start_at' => now(),
+        'end_at' => null,
+      ]);
 
-    $this->createTicketAuditLog(
-      $ticket->id,
-      'status',
-      [],
-      [
-        'internal_status' => $ticket->internal_status,
-        'external_status' => $ticket->external_status
-      ],
-      'Ticket created',
-      'new',
-    );
-
+      return $ticket->fresh();
+    });
     Mail::to($ticket->client->email)
       ->queue(new ClientTicketCreated($ticket));
 
@@ -123,356 +124,105 @@ class TicketService
 
   public function update(string $id, array $data): Ticket
   {
+    $ticket = Ticket::where('id', $id)->first();
 
-    $ticket = Ticket::findOrFail($id);
-
-    $user = auth()->user();
-
-    // Check if user is leader, supporter or admin in ticket participants
-    if (!$user->hasRole(UserRoles::ADMIN->value)) {
-      $isAuthorized = $ticket->participants()
-        ->where('user_id', $user->id)
-        ->whereIn('role_in_ticket', [UserRoles::LEADER->value, UserRoles::SUPPORTER->value])
-        ->exists();
-
-      if (!$isAuthorized) {
-        throw new Exception('Only ticket leaders, supporters and admins can update tickets', Response::HTTP_FORBIDDEN);
-      }
-    }
-
-    $oldData = [
-      'subject' => $ticket->subject,
-      'description' => $ticket->description,
-      'client_email' => $ticket->client->email
-    ];
-
-    // Update client email if changed
-    if (isset($data['client_email']) && $data['client_email'] !== $ticket->client->email) {
-      $client = $this->clientService->createClient([
-        'name' => explode('@', $data['client_email'])[0],
-        'email' => $data['client_email']
-      ]);
-      $data['client_id'] = $client->id;
-    }
-
-    $ticket->update($data);
-
-    $this->createTicketAuditLog(
-      $ticket->id,
-      'ticket_updated',
-      $oldData,
-      [
-        'title' => $ticket->title,
-        'description' => $ticket->description,
-        'priority' => $ticket->priority,
-        'client_email' => $ticket->client->email
-      ],
-      'Ticket updated',
-      'update',
+    TicketValidator::checkTicketExists($ticket);
+    TicketValidator::checkTicketBelongsToHolderOrStaff(
+      $ticket,
+      'You are not authorized to update this ticket'
     );
+
+    $ticket = DB::transaction(function () use ($ticket, $data) {
+      $oldStatus = $ticket->status;
+      $oldStaffId = $ticket->staff_id;
+      $ticket->update($data);
+
+      if (isset($data['status']) && $data['status'] !== $oldStatus) {
+        $this->handleTicketStatusChange($ticket, $data['status']);
+      }
+
+      if (isset($data['staff_id']) && $data['staff_id'] !== $oldStaffId) {
+        $this->handleTicketStatusChange($ticket, TicketStatus::ASSIGNED->value);
+      }
+
+      return $ticket;
+    });
+
     return $ticket->fresh();
   }
 
-  public function notifyLeaderForReview(string $id): void
-  {
-    $task = Task::findOrFail($id);
-    $ticket = $task->ticket;
-
-    // Check if all tasks are assigned and ready for review
-    $allTasksReady = $ticket->tasks->every(function ($task) {
-      return $task->estimation_status === EstimationStatus::READY_FOR_REVIEW->value
-        && $task->assigned_to !== null;
-    });
-
-    if (!$allTasksReady) return;
-
-    $oldInternalStatus = $ticket->internal_status;
-    $ticket->update([
-      'internal_status' => InternalStatus::AWAITING_ESTIMATION_APPROVAL->value
-    ]);
-
-    $this->createTicketAuditLog(
-      $ticket->id,
-      'status',
-      ['internal_status' => $oldInternalStatus],
-      ['internal_status' => $ticket->internal_status],
-      'All tasks ready for estimation review',
-      'awaiting_estimation_approval',
-    );
-
-    $leaders = $ticket->participants()->where('role_in_ticket', UserRoles::LEADER->value)->get();
-
-    foreach ($leaders as $leader) {
-      if ($leader->email) {
-        // Mail::to($leader->email)
-        //   ->queue(new TaskReadyForReview($task));
-      }
-    }
-  }
-
-  public function checkAndUpdateInitialStatus($ticket_id): Ticket
-  {
-    $ticket = Ticket::findOrFail($ticket_id);
-
-    if (
-      $ticket->internal_status !== InternalStatus::NEW->value ||
-      $ticket->external_status !== ExternalStatus::RECEIVED->value
-    ) {
-      return $ticket;
-    }
-    $oldInternalStatus = $ticket->internal_status;
-    $oldExternalStatus = $ticket->external_status;
-
-    $ticket->update([
-      'internal_status' => InternalStatus::IN_ANALYSIS->value,
-      'external_status' => ExternalStatus::PROCESSING->value
-    ]);
-
-    $this->createAuditLog(
-      $ticket->id,
-      'status',
-      [
-        'internal_status' => $oldInternalStatus,
-        'external_status' => $oldExternalStatus
-      ],
-      [
-        'internal_status' => $ticket->internal_status,
-        'external_status' => $ticket->external_status
-      ],
-      'Initial ticket status updated to Processing'
-    );
-
-    $this->createTicketAuditLog(
-      $ticket->id,
-      'status',
-      [
-        'internal_status' => $oldInternalStatus,
-        'external_status' => $oldExternalStatus
-      ],
-      [
-        'internal_status' => $ticket->internal_status,
-        'external_status' => $ticket->external_status
-      ],
-      'Initial ticket status updated to Processing',
-      'processing',
-    );
-    return $ticket;
-  }
-
-    public function changeToExecutionTicket(string $ticket_id): Ticket
-  {
-    $ticket = Ticket::findOrFail($ticket_id);
-
-    $ticket = Ticket::findOrFail($ticket_id);
-
-    if ($ticket->internal_status !== InternalStatus::AWAITING_ESTIMATION_APPROVAL->value) {
-      throw new Exception(
-        'Ticket must be in Awaiting Estimation Approval status to proceed',
-        Response::HTTP_BAD_REQUEST
-      );
-    }
-
-    TicketValidator::validateUserIsLeader(
-      $ticket,
-      null,
-      'Only leaders can change ticket to In Progress status'
-    );
-
-    $oldInternalStatus = $ticket->internal_status;
-    $oldExternalStatus = $ticket->external_status;
-  
-    $ticket->update([
-      'internal_status' => InternalStatus::IN_PROGRESS->value,
-      'external_status' => ExternalStatus::PROCESSING->value
-    ]);
-
-    $this->createTicketAuditLog(
-      $ticket->id,
-      'status',
-      [
-        'internal_status' => $oldInternalStatus,
-        'external_status' => $oldExternalStatus
-      ],
-      [
-        'internal_status' => $ticket->internal_status,
-        'external_status' => $ticket->external_status
-      ],
-      'Changed to In Progress status',
-      'in_progress',
-    );
-    // Mail::to($ticket->client->email)->queue(new ClientTicketAwaitingApproval($ticket));
-    Mail::to($ticket->client->email)
-    ->queue(new ClientTicketProcessing($ticket));
-    return $ticket;
-  }
-
-  public function checkAndCompleteTicket(string $task_id): ?Ticket
-  {
-    $task = Task::findOrFail($task_id);
-    $ticket = $task->ticket;
-
-    // Get all tasks for this ticket
-    $tasks = $ticket->tasks;
-
-    // Check if all tasks are in execution phase and completed
-    $allTasksCompleted = $tasks->every(function ($task) {
-      return $task->phase === 'execution' &&
-        $task->execution_status === 'completed';
-    });
-
-    if ($allTasksCompleted) {
-      $oldInternalStatus = $ticket->internal_status;
-      $oldExternalStatus = $ticket->external_status;
-
-      $ticket->update([
-        'internal_status' => InternalStatus::COMPLETED->value,
-        'external_status' => ExternalStatus::COMPLETED->value
-      ]);
-
-      $this->createTicketAuditLog(
-        $ticket->id,
-        'status',
-        [
-          'internal_status' => $oldInternalStatus,
-          'external_status' => $oldExternalStatus
-        ],
-        [
-          'internal_status' => $ticket->internal_status,
-          'external_status' => $ticket->external_status
-        ],
-        'Ticket automatically marked as completed - all tasks finished',
-        'completed',
-      );
-      return $ticket;
-    }
-
-    return null;
-  }
-
-  public function notifyLeaderForExecutionReview(string $id): void
-  {
-    $task = Task::findOrFail($id);
-    $ticket = $task->ticket;
-
-    // Check if all tasks are ready for execution review
-    $allTasksReady = $ticket->tasks->every(function ($task) {
-      return $task->phase === TaskPhase::EXECUTION->value &&
-        $task->execution_status === ExecutionStatus::READY_FOR_REVIEW->value;
-    });
-
-    if (!$allTasksReady) {
-      return;
-    }
-
-    $leaders = $ticket->participants()
-      ->where('role_in_ticket', UserRoles::LEADER->value)
-      ->get();
-
-    foreach ($leaders as $leader) {
-      if ($leader->email) {
-        // Mail::to($leader->email)
-        //   ->queue(new TaskReadyForExecutionReview($task));
-      }
-    }
-
-    $oldInternalStatus = $ticket->internal_status;
-    $ticket->update([
-      'internal_status' => InternalStatus::UNDER_REVIEW->value
-    ]);
-
-    $this->createTicketAuditLog(
-      $ticket->id,
-      'status',
-      ['internal_status' => $oldInternalStatus],
-      ['internal_status' => $ticket->internal_status],
-      'All tasks ready for execution review',
-      'under_review',
-    );
-
-    //notify leader
-  }
-
-  public function checkAndCloseTicket(string $id)
-  {
-    $ticket = Ticket::findOrFail($id);
-    TicketValidator::validateUserIsLeader(
-      $ticket,
-      null,
-      'Only ticket leaders can close tickets'
-    );
-
-    if ($ticket->internal_status !== InternalStatus::COMPLETED->value) {
-      throw new Exception(
-        'Ticket must be in Completed status to proceed',
-        Response::HTTP_BAD_REQUEST
-      );
-    }
-
-    if ($ticket->external_status !== ExternalStatus::COMPLETED->value) {
-      throw new Exception(
-        'Ticket must be in Completed status to proceed',
-        Response::HTTP_BAD_REQUEST
-      );
-    }
-
-    $oldStatuses = [
-      'internal_status' => $ticket->internal_status,
-      'external_status' => $ticket->external_status
-    ];
-
-    $ticket->update([
-      'internal_status' => InternalStatus::CLOSED->value,
-      'external_status' => ExternalStatus::CLOSED->value,
-      'closed_at' => now()
-    ]);
-
-    $this->createTicketAuditLog(
-      $ticket->id,
-      'status',
-      $oldStatuses,
-      [
-        'internal_status' => $ticket->internal_status, 
-        'external_status' => $ticket->external_status
-      ],
-      'Ticket closed by leader',
-      'closed',
-    );
-
-    Mail::to($ticket->client->email)->queue(new TicketClosed($ticket));
-    return $ticket;
-  }
-
-  public function getTicketById($id)
-  {
-    $ticket = Ticket::where('id', $id)->first();
-    TicketValidator::checkTicketExists($ticket);
-
-    return $ticket->load(['client', 'participants']);
-  }
-
-  public function getTicketAuditLogs(string $id): array
+  public function delete(string $id): Ticket
   {
     $ticket = Ticket::findOrFail($id);
 
-    $isParticipant = $ticket->participants()
-        ->where('user_id', auth()->id())
-        ->exists();
+    TicketValidator::checkTicketBelongsToHolder(
+      $ticket,
+      'You are not authorized to delete this ticket'
+    );
 
-    if (!$isParticipant && !auth()->user()->hasRole(UserRoles::ADMIN->value)) {
-        throw new Exception(
-            'Only ticket participants can view audit logs',
-            Response::HTTP_FORBIDDEN
-        );
-    }
+    $ticket = DB::transaction(function () use ($ticket) {
+      $ticket->delete();
 
-    $logs = $ticket->logs()
-      ->with(['changedBy'])
-      ->orderBy('created_at', 'desc')
-      ->get();
+      $this->handleTicketStatusChange($ticket, TicketStatus::DELETED->value, AuditActions::DELETED->value);
+
+      return $ticket;
+    });
+
+    return $ticket;
+  }
+
+
+
+  public function getLogs(string $id, array $filters = []): array
+  {
+    $ticket = Ticket::findOrFail($id);
+
+    $query = $ticket->logs()
+      ->with(['staff', 'holder'])
+      ->orderBy('created_at', 'desc');
+
+    $perPage = $filters['limit'] ?? PaginateConstant::DEFAULT_PER_PAGE->value;
+    $page = $filters['page'] ?? PaginateConstant::DEFAULT_PAGE->value;
+
+    $paginator = $query->paginate($perPage, ['*'], 'page', $page);
 
     return [
-      'data' => $logs,
-      'total' => $logs->count()
+      'data' => $paginator->items(),
+      'pagination' => [
+        'page' => $paginator->currentPage(),
+        'perPage' => $paginator->perPage(),
+        'total' => $paginator->total(),
+      ]
     ];
+  }
+
+  public function handleTicketStatusChange(
+    Ticket $ticket,
+    string $newStatus,
+    string $action = AuditActions::STATUS_CHANGED->value
+  ): void {
+    $latestAuditLog = $ticket->logs()
+      ->whereNull('end_at')
+      ->orderBy('created_at', 'asc')
+      ->first();
+
+    if ($latestAuditLog) {
+      $latestAuditLog->update([
+        'action' => $action,
+        'end_at' => now(),
+        'to_status' => $newStatus,
+      ]);
+    }
+
+    TicketAuditLog::create([
+      'ticket_id' => $ticket->id,
+      'action' => AuditActions::PENDING->value,
+      'status' => $newStatus,
+      'to_status' => null,
+      'holder_id' => $ticket->holder_id,
+      'staff_id' => $ticket->staff_id,
+      'start_at' => now(),
+      'end_at' => null,
+    ]);
   }
 }

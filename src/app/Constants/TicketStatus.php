@@ -12,6 +12,8 @@ enum TicketStatus :string
     case COMPLETE = 'complete';
     case FORCE_CLOSED = 'force_closed';
 
+    case DELETED = 'deleted';
+
     public function label(): string
     {
         return match ($this) {

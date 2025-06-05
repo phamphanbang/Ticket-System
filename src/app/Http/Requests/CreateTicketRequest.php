@@ -12,11 +12,7 @@ class CreateTicketRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return auth()->check()
-            && auth()->user()->hasAnyRole([
-                UserRoles::SUPPORTER->value,
-                UserRoles::ADMIN->value
-            ]);
+        return auth()->check();
     }
 
     /**
@@ -28,7 +24,7 @@ class CreateTicketRequest extends FormRequest
     {
         return [
             'client_email' => 'required|string|email|max:255',
-            'subject' => 'required|string|max:255',
+            'title' => 'required|string|max:255',
             'description' => 'required|string'
         ];
     }

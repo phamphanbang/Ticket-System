@@ -17,17 +17,13 @@ class TicketResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'subject' => $this->subject,
+            'title' => $this->title,
             'description' => $this->description,
             'client_email' => $this->client?->email,
             'client_name' => $this->client?->name,
-            'internal_status' => $this->internal_status,
-            'external_status' => $this->external_status,
-            'assigned_to' => $this->participants->where('role_in_ticket', UserRoles::LEADER->value)
-            ->whereNull('left_at')
-            ->map(function ($participant) {
-                return $participant->user->name;
-            })->values()->all(),
+            'status' => $this->status,
+            'holder' => $this->holder,
+            'staff' => $this->staff,
             'created_at' => $this->created_at->format('Y-m-d H:i:s'),
             'updated_at' => $this->updated_at->format('Y-m-d H:i:s'),
         ];

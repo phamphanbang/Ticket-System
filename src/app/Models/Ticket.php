@@ -19,11 +19,9 @@ class Ticket extends Model
         'description',
         'status',
         'client_id',
+        'holder_id',
+        'staff_id',
         'mail_created_id',
-        'created_by',
-        'current_processor_id',
-        'responsible_user_id',
-        'closed_at'
     ];
 
     protected $casts = [
@@ -51,24 +49,14 @@ class Ticket extends Model
         return $this->hasMany(ReceivedEmail::class);
     }
 
-    public function createdBy()
+    public function holder()
     {
-        return $this->belongsTo(User::class, 'created_by');
+        return $this->belongsTo(User::class, 'holder_id');
     }
 
-    public function currentProcessor()
+    public function staff()
     {
-        return $this->belongsTo(User::class, 'current_processor_id');
-    }
-
-    public function responsibleUser()
-    {
-        return $this->belongsTo(User::class, 'responsible_user_id');
-    }
-
-    public function closedBy()
-    {
-        return $this->belongsTo(User::class, 'closed_by');
+        return $this->belongsTo(User::class, 'staff_id');
     }
 
     public function mailCreated()

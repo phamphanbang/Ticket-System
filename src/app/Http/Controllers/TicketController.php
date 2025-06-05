@@ -2,14 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Constants\TicketStatus;
-use App\Http\Requests\ActionTicketRequest;
-use App\Http\Requests\AdminAssignsTicketRequest;
+
 use App\Http\Requests\CreateTicketRequest;
-use App\Http\Requests\DelayTicketRequest;
 use App\Http\Requests\UpdateTicketRequest;
 use App\Http\Resources\TicketResource;
-use App\Models\Ticket;
 use App\Services\TaskService;
 use App\Services\TicketService;
 use Illuminate\Http\Request;
@@ -21,15 +17,13 @@ class TicketController extends Controller
 
     public function __construct(
         protected TicketService $ticketService,
-        protected TaskService $taskService
     ) {}
 
     public function index(Request $request)
     {
         $filters = $request->only([
             'search',
-            'internal_status',
-            'external_status',
+            'status',
             'sort_by',
             'sort_direction',
             'limit',
@@ -58,9 +52,12 @@ class TicketController extends Controller
 
     public function show(string $id)
     {
-        $ticket = $this->ticketService->getTicketById($id);
+        $ticket = $this->ticketService->show($id);
 
-        return $this->success(new TicketResource($ticket), 'Ticket retrieved successfully');
+        return $this->success(
+            new TicketResource($ticket),
+            'Ticket retrieved successfully'
+        );
     }
 
     public function update(UpdateTicketRequest $request, string $id)
@@ -75,29 +72,9 @@ class TicketController extends Controller
         );
     }
 
-    public function executeTicket(string $id)
+    public function getLogs(string $id)
     {
-        $ticket = $this->ticketService->changeToExecutionTicket($id);
-        $this->taskService->changeTasksToExecution($id);
-        return $this->success(
-            new TicketResource($ticket),
-            'Ticket status changed to In Progress successfully'
-        );
-    }
-
-    public function checkAndCloseTicket(string $id)
-    {
-        $ticket = $this->ticketService->checkAndCloseTicket($id);
-
-        return $this->success(
-            new TicketResource($ticket),
-            'Ticket status checked successfully'
-        );
-    }
-
-    public function getTicketAuditLogs(string $id)
-    {
-        $logs = $this->ticketService->getTicketAuditLogs($id);
+        $logs = $this->ticketService->getLogs($id);
 
         return $this->success(
             $logs,

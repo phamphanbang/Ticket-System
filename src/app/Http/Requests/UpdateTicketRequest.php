@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Constants\TicketStatus;
 use App\Constants\UserRoles;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -9,20 +10,16 @@ class UpdateTicketRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return auth()->check()
-            && auth()->user()->hasRole([
-                UserRoles::ADMIN->value,
-                UserRoles::SUPPORTER->value,
-                UserRoles::LEADER->value
-            ]);
+        return auth()->check();
     }
 
     public function rules(): array
     {
         return [
-            'subject' => 'required|string|max:255|min:5',
-            'description' => 'required|string',
-            'client_email' => 'required|email',
+            'title' => 'sometimes|string|max:255|min:5',
+            'description' => 'sometimes|string',
+            'status' => 'sometimes|string|in:' . implode(',', TicketStatus::all()),
+            'staff_id' => 'sometimes|uuid|exists:users,id',
         ];
     }
 }
