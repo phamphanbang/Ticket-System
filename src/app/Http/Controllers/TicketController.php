@@ -81,4 +81,14 @@ class TicketController extends Controller
             'Ticket audit logs retrieved successfully'
         );
     }
+
+    public function getAttachments(string $id)
+    {
+        $attachments = $this->ticketService->getAttachments($id);
+
+        return $this->success(
+            $attachments,
+            'Ticket attachments retrieved successfully'
+        );
+    }
 }

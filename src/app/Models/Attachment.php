@@ -16,14 +16,14 @@ class Attachment extends Model
         'comment_id',
         'file_path',
         'file_name',
-        'file_type',
         'file_size',
+        'file_extension',
         'content_type',
     ];
 
     public function comment()
     {
-        return $this->belongsTo(TicketComment::class);
+        return $this->belongsTo(TicketComment::class , 'comment_id');
     }
     
     

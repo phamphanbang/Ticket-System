@@ -196,6 +196,32 @@ class TicketService
     ];
   }
 
+  public function getAttachments(string $id): array
+  {
+    $ticket = Ticket::findOrFail($id);
+
+    $attachments = $ticket->comments()
+      ->with(['attachments'])
+      ->get()
+      ->pluck('attachments')
+      ->flatten()
+      ->map(function ($attachment) {
+        return [
+          'id' => $attachment->id,
+          'file_name' => $attachment->file_name,
+          'file_path' => $attachment->file_path,
+          'file_size' => $attachment->file_size,
+          'file_extension' => $attachment->file_extension,
+          'content_type' => $attachment->content_type,
+          'created_at' => $attachment->created_at
+        ];
+      })
+      ->values()
+      ->toArray();
+
+    return $attachments;
+  }
+
   public function handleTicketStatusChange(
     Ticket $ticket,
     string $newStatus,

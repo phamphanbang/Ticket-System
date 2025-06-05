@@ -12,6 +12,7 @@ Route::middleware('auth:sanctum')->post('auth/logout', [AuthController::class, '
 Route::middleware(['auth:sanctum', 'api'])->group(function () {
   Route::apiResource('users', UserController::class);
   Route::apiResource('tickets', TicketController::class);
+  Route::get('tickets/{id}/attachments', [TicketController::class, 'getAttachments']);
   Route::prefix('tickets')->group(function () {
     Route::get('/{id}/logs', [TicketController::class, 'getLogs']);
     Route::get('/{id}/comments', [CommentController::class, 'index']);
@@ -20,4 +21,6 @@ Route::middleware(['auth:sanctum', 'api'])->group(function () {
   });
   Route::put('/comments/{commentId}', [CommentController::class, 'update']);
   Route::delete('/comments/{commentId}', [CommentController::class, 'destroy']);
+  Route::get('attachments/{id}', [CommentController::class, 'download']);
+  Route::delete('attachments/{id}', [CommentController::class, 'deleteAttachment']);
 });
