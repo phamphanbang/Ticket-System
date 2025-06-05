@@ -23,7 +23,8 @@ class CreateCommentRequest extends FormRequest
     {
         return [
             'content' => 'required|string|max:5000', 
-                   
+            'attachments' => 'nullable|array',
+            'attachments.*' => 'file|max:10240'
         ];
     }
 }

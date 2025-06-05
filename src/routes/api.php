@@ -20,4 +20,6 @@ Route::middleware(['auth:sanctum', 'api'])->group(function () {
   });
   Route::put('/comments/{commentId}', [CommentController::class, 'update']);
   Route::delete('/comments/{commentId}', [CommentController::class, 'destroy']);
+  Route::get('attachments/{id}', [CommentController::class, 'download'])->name('attachments.download');
+  Route::delete('attachments/{id}', [CommentController::class, 'attachments.download']);
 });
