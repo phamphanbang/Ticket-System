@@ -16,14 +16,14 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->foreignUuid('ticket_id')->constrained('tickets');
             $table->string('action');
-            $table->enum('from_status', TicketStatus::all())->default(TicketStatus::NEW->value);
-            $table->enum('to_status', TicketStatus::all())->default(TicketStatus::NEW->value);
-            $table->foreignUuid('from_user_id')->nullable()->constrained('users');
-            $table->foreignUuid('to_user_id')->nullable()->constrained('users');
+            $table->string('status');
+            $table->string('to_status')->nullable();
+            $table->foreignUuid('holder_id')->nullable()->constrained('users');
+            $table->foreignUuid('staff_id')->nullable()->constrained('users');
             $table->timestamp('start_at');
             $table->timestamp('end_at')->nullable();
-            $table->text('comment')->nullable();
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 
