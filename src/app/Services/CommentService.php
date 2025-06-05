@@ -121,7 +121,6 @@ class CommentService
     $contentType = $file->getMimeType();
     $fileSize = $file->getSize();
 
-    // dd($file->getClientOriginalExtension());
     $filePath = $file->store("comments/{$comment->id}");
     return $comment->attachments()->create([
       'file_name' => $fileName,
