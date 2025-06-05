@@ -14,7 +14,7 @@ return new class extends Migration
     {
         Schema::create('ticket_audit_logs', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->foreignUuid('ticket_id')->constrained('tickets');
+            $table->foreignUuid('ticket_id')->constrained('tickets')->onDelete('cascade');
             $table->string('action');
             $table->string('status');
             $table->string('to_status')->nullable();
