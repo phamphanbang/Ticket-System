@@ -21,7 +21,7 @@ class UserService
     $query = $query->search($search);
 
     if ($role) {
-      $query = $query->role($role);
+      $query = $query->where('role', $role);
     }
 
     if ((boolean) $isPaginate) {
