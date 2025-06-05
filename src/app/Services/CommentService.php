@@ -4,11 +4,12 @@ namespace App\Services;
 
 use App\Constants\PaginateConstant;
 use App\Constants\UserRoles;
-use App\Mail\ClientStaffCreateComment;
+use App\Models\Ticket;
 use App\Models\TicketComment;
+use App\Traits\HasPagination;
 use App\Validators\TicketValidator;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
+use Exception;
+use Symfony\Component\HttpFoundation\Response;
 
 class CommentService
 {
@@ -18,54 +19,95 @@ class CommentService
     // Constructor to inject TicketMailService dependency
   }
 
-  public function getListComment($request,$ticket_id)
+  public function index(string $ticketId, array $filters = [])
   {
-    $isPaginate = $request->boolean('isPaginate', true);
+    $query = TicketComment::where('ticket_id', $ticketId);
 
-    $query = TicketComment::query()->where('ticket_id', $ticket_id)->with('user');
+    $perPage = $filters['limit'] ?? PaginateConstant::DEFAULT_PER_PAGE->value;
+    $page = $filters['page'] ?? PaginateConstant::DEFAULT_PAGE->value;
 
-    if ((boolean) $isPaginate) {
-      $perPage = $request->input('perPage', PaginateConstant::DEFAULT_PER_PAGE->value);
-      $page = $request->input('page', PaginateConstant::DEFAULT_PAGE->value);
-      $offset = ($page - 1) * $perPage;
-      if ($offset < 0) {
-        $offset = PaginateConstant::DEFAULT_OFFSET->value;
-      }
-      $query = $query->offset($offset)->limit($perPage);
-      $total = $query->count();
-    }
+    $paginator = $query->paginate($perPage, ['*'], 'page', $page);
 
-    $comments = $query->get()->map(function ($comment) {
-      return [
-        'id' => $comment->id,
-        'body' => $comment->body,
-        'ticket_id' => $comment->ticket_id,
-        'created_at' => $comment->created_at,
-        'updated_at' => $comment->updated_at,
-        'user' => [
-          'id' => $comment->user->id,
-          'name' => $comment->user->name,
-          'email' => $comment->user->email
-        ]
-      ];
-    });
-
-    return $isPaginate ? [
-      'data' => $comments,
+    return [
+      'data' => $paginator->items(),
       'pagination' => [
-        'total' => $total,
-        'page' => (int) $page,
-        'perPage' => (int) $perPage
+        'page' => $paginator->currentPage(),
+        'perPage' => $paginator->perPage(),
+        'total' => $paginator->total(),
       ]
-    ] : [
-      'data' => $comments,
     ];
   }
 
-  public function createComment($data)
+  public function show(string $ticketId, string $id): TicketComment
   {
-    $comment = TicketComment::create($data);
+    $comment = TicketComment::where('id', $id)
+      ->where('ticket_id', $ticketId)
+      ->firstOrFail();
+
+    $ticket = $comment->ticket;
+    TicketValidator::checkTicketExists($ticket);
+    $this->checkAuthorization($ticket);
 
     return $comment;
+  }
+
+  public function store(string $ticketId, array $data): TicketComment
+  {
+    $ticket = Ticket::where('id', $ticketId)->first();
+    TicketValidator::checkTicketExists($ticket);
+    $this->checkAuthorization($ticket);
+
+    $comment = TicketComment::create($data);
+    return $comment;
+  }
+
+  public function update(string $id, array $data): TicketComment
+  {
+    $comment = TicketComment::where('id', $id)->firstOrFail();
+
+    if ($comment->user_id !== auth()->id() && auth()->user()->role !== UserRoles::ADMIN->value) {
+      throw new Exception(
+        'You are not authorized to update this comment',
+        Response::HTTP_FORBIDDEN
+      );
+    }
+
+    $comment->update($data);
+    return $comment->fresh();
+  }
+
+  public function destroy(string $id): bool
+  {
+    $comment = TicketComment::where('id', $id)->firstOrFail();
+
+    if ($comment->user_id !== auth()->id() && auth()->user()->role !== UserRoles::ADMIN->value) {
+      throw new Exception(
+        'You are not authorized to delete this comment',
+        Response::HTTP_FORBIDDEN
+      );
+    }
+
+    $comment->delete();
+    return true;
+  }
+
+
+  public function checkAuthorization(Ticket $ticket)
+  {
+    TicketValidator::checkTicketExists($ticket);
+    $userId = auth()->id();
+    $isAuthorized = $ticket->logs()
+      ->where(function ($query) use ($userId) {
+        $query->where('holder_id', $userId)
+          ->orWhere('staff_id', $userId);
+      })
+      ->exists();
+
+    if (!$isAuthorized) {
+      throw new Exception(
+        'You are not authorized to view this comment',
+        Response::HTTP_FORBIDDEN
+      );
+    }
   }
 }
