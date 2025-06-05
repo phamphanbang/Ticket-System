@@ -41,4 +41,14 @@ class AuthService
       'data' => []
     ];
   }
+
+  public function me(User $user): array
+  {
+    return [
+      'message' => 'User retrieved successfully',
+      'data' => [
+        'user' => new UserResource($user)
+      ]
+    ];
+  }
 }

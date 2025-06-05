@@ -10,6 +10,7 @@ Route::post('auth/login', [AuthController::class, 'login']);
 Route::middleware('auth:sanctum')->post('auth/logout', [AuthController::class, 'logout']);
 
 Route::middleware(['auth:sanctum', 'api'])->group(function () {
+  Route::get('auth/me', [AuthController::class, 'me']);
   Route::apiResource('users', UserController::class);
   Route::apiResource('tickets', TicketController::class);
   Route::get('tickets/{id}/attachments', [TicketController::class, 'getAttachments']);
