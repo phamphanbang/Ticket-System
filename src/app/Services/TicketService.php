@@ -37,14 +37,8 @@ class TicketService
 
   public function index(array $filters = []): array
   {
-    $query = Ticket::query()->with(['client', 'participants']);
-
-    // if (auth()->user()->hasRole(UserRoles::STAFF->value)) {
-    //   $query->whereHas('participants', function ($q) {
-    //     $q->where('user_id', auth()->id());
-    //   });
-    // }
-
+    $query = Ticket::query()->with(['client', 'holder', 'staff']);
+    $user = auth()->user();
     if (isset($filters['search'])) {
       $query->where(function ($q) use ($filters) {
         $q->where('title', 'like', "%{$filters['search']}%")
@@ -56,11 +50,31 @@ class TicketService
       });
     }
 
+    if ($user->role == UserRoles::ADMIN->value) {
+      // Admin: get all tickets, including soft deleted
+      $query->withTrashed();
+    } else {
+      // Non-admin: tickets assigned to them (from logs or staff_id), excluding soft deleted
+      $query->where(function ($q) use ($user) {
+      // Tickets where user is staff (not soft deleted)
+      $q->where('staff_id', $user->id)
+        ->whereNull('deleted_at');
+      });
 
-    // if (isset($filters['created_by'])) {
-    //   $query->where('created_by', $filters['created_by']);
-    // }
+      // Also include soft deleted tickets where user is the holder
+      $query->orWhere(function ($q) use ($user) {
+      $q->withTrashed()
+        ->where('holder_id', $user->id)
+        ->whereNotNull('deleted_at');
+      });
 
+      // Also include tickets assigned to them via logs (not soft deleted)
+      $query->orWhereHas('logs', function ($q) use ($user) {
+      $q->where('staff_id', $user->id);
+      })->whereNull('deleted_at');
+    }
+    
+    
     if (isset($filters['sort_by'])) {
       $direction = $filters['sort_direction'] ?? 'desc';
       $query->orderBy($filters['sort_by'], $direction);
@@ -172,7 +186,6 @@ class TicketService
   }
 
 
-
   public function getLogs(string $id, array $filters = []): array
   {
     $ticket = Ticket::findOrFail($id);
@@ -194,6 +207,22 @@ class TicketService
         'total' => $paginator->total(),
       ]
     ];
+  }
+
+  public function deleteLog(string $id): void
+  {
+    $log = TicketAuditLog::findOrFail($id);
+
+    $user = auth()->user();
+
+    if ($user->role !== UserRoles::ADMIN->value && $user->id !== $log->holder_id) {
+      throw new Exception(
+        'You are not authorized to delete this log',
+        Response::HTTP_FORBIDDEN
+      );
+    }
+
+    $log->delete();
   }
 
   public function getAttachments(string $id): array

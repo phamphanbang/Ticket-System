@@ -66,11 +66,8 @@ class UserService
       'name' => $request['name'],
       'email' => $request['email'],
       'password' => Hash::make($request['password']),
+      'role' => $request['role'],
     ]);
-
-    if (isset($request['role'])) {
-      $user->assignRole($request['role']);
-    }
 
     return new UserResource($user);
   }

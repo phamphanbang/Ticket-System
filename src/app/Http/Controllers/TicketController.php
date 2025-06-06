@@ -72,6 +72,15 @@ class TicketController extends Controller
         );
     }
 
+    public function destroy(string $id)
+    {
+        $this->ticketService->delete($id);
+
+        return $this->success(
+            null,
+            __('messages.model_deleted', ['model' => 'Ticket'])
+        );
+    }
     public function getLogs(string $id)
     {
         $logs = $this->ticketService->getLogs($id);
@@ -82,6 +91,15 @@ class TicketController extends Controller
         );
     }
 
+    public function deleteLog(string $id)
+    {
+        $this->ticketService->deleteLog($id);
+
+        return $this->success(
+            null,
+            __('messages.model_deleted', ['model' => 'Ticket audit log'])
+        );
+    }
     public function getAttachments(string $id)
     {
         $attachments = $this->ticketService->getAttachments($id);
