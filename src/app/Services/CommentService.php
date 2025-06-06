@@ -10,6 +10,7 @@ use App\Models\TicketComment;
 use App\Validators\TicketValidator;
 use Exception;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\Response;
@@ -17,14 +18,15 @@ use Symfony\Component\HttpFoundation\Response;
 class CommentService
 {
   public function __construct(
-    protected TicketService $ticketService
+    protected TicketService $ticketService,
+    protected AttachmentService $attachmentService
   ) {
     // Constructor to inject TicketMailService dependency
   }
 
   public function index(string $ticketId, array $filters = [])
   {
-    $query = TicketComment::with('attachments')->where('ticket_id', $ticketId);
+    $query = TicketComment::with('attachments', 'user')->where('ticket_id', $ticketId);
 
     $perPage = $filters['limit'] ?? PaginateConstant::DEFAULT_PER_PAGE->value;
     $page = $filters['page'] ?? PaginateConstant::DEFAULT_PAGE->value;
@@ -49,7 +51,7 @@ class CommentService
 
     $ticket = $comment->ticket;
     TicketValidator::checkTicketExists($ticket);
-    $this->checkAuthorization($ticket);
+    TicketValidator::checkAuthorization($ticket);
 
     return $comment;
   }
@@ -58,14 +60,14 @@ class CommentService
   {
     $ticket = Ticket::where('id', $ticketId)->first();
     TicketValidator::checkTicketExists($ticket);
-    $this->checkAuthorization($ticket);
+    TicketValidator::checkAuthorization($ticket);
 
-    $comment = DB::transaction(function () use ($data) {
+    $comment = DB::transaction(function () use ($data, $ticket) {
       $comment = TicketComment::create($data);
 
       if (!empty($data['attachments'])) {
         foreach ($data['attachments'] as $file) {
-          $this->saveAttachment($file, $comment);
+          $this->attachmentService->saveAttachment($file, $comment->id, $ticket->id);
         }
       }
 
@@ -89,7 +91,7 @@ class CommentService
 
       if (!empty($data['attachments'])) {
         foreach ($data['attachments'] as $file) {
-          $this->saveAttachment($file, $comment);
+          $this->attachmentService->saveAttachment($file, $comment->id, $comment->ticket->id);
         }
       }
 
@@ -112,77 +114,5 @@ class CommentService
 
     $comment->delete();
     return true;
-  }
-
-  private function saveAttachment(UploadedFile $file, TicketComment $comment): Attachment
-  {
-    $fileName = $file->getClientOriginalName();
-    $fileExtension = $file->getClientOriginalExtension();
-    $contentType = $file->getMimeType();
-    $fileSize = $file->getSize();
-
-    $filePath = $file->store("comments/{$comment->id}");
-    return $comment->attachments()->create([
-      'file_name' => $fileName,
-      'file_extension' => $fileExtension,
-      'file_path' => $filePath,
-      'file_size' => $fileSize,
-      'content_type' => $contentType
-    ]);
-  }
-
-  public function deleteAttachment(string $attachmentId): bool
-  {
-    $attachment = Attachment::with('comment')->findOrFail($attachmentId);
-    $comment = $attachment->comment;
-
-    if ($comment->user_id !== auth()->id() && auth()->user()->role !== UserRoles::ADMIN->value) {
-      throw new Exception(
-        'You are not authorized to delete this attachment',
-        Response::HTTP_FORBIDDEN
-      );
-    }
-
-    return DB::transaction(function () use ($attachment) {
-      if (Storage::exists($attachment->file_path)) {
-        Storage::delete($attachment->file_path);
-      }
-      return $attachment->delete();
-    });
-  }
-
-  public function download(string $attachmentId)
-  {
-    $attachment = Attachment::with('comment.ticket')->findOrFail($attachmentId);
-    $comment = $attachment->comment;
-    $ticket = $comment->ticket;
-
-    $this->checkAuthorization($ticket);
-
-    if (!Storage::exists($attachment->file_path)) {
-      throw new Exception('File not found', Response::HTTP_NOT_FOUND);
-    }
-
-    return $attachment;
-  }
-
-
-  public function checkAuthorization(Ticket $ticket)
-  {
-    TicketValidator::checkTicketExists($ticket);
-    $user = auth()->user();
-    $isAuthorized = $ticket->logs()
-      ->where(function ($query) use ($user) {
-        $query->where('holder_id', $user->id)
-          ->orWhere('staff_id', $user->id);
-      })
-      ->exists();
-
-    if (!$isAuthorized && $user->role !== UserRoles::ADMIN->value) {
-      throw new Exception(
-        'You are not authorized to view this comment',
-        Response::HTTP_FORBIDDEN
-      );
-    }
   }
 }

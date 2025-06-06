@@ -14,12 +14,12 @@ use App\Constants\UserRoles;
 use App\Mail\ClientTicketCreated;
 use App\Mail\ClientTicketProcessing;
 use App\Mail\TicketClosed;
-use App\Models\Task;
 use App\Models\Ticket;
 use App\Models\TicketAuditLog;
 use App\Traits\HasAuditLog;
 use App\Validators\TicketValidator;
 use Exception;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Symfony\Component\HttpFoundation\Response;
@@ -51,30 +51,26 @@ class TicketService
     }
 
     if ($user->role == UserRoles::ADMIN->value) {
-      // Admin: get all tickets, including soft deleted
       $query->withTrashed();
     } else {
-      // Non-admin: tickets assigned to them (from logs or staff_id), excluding soft deleted
-      $query->where(function ($q) use ($user) {
-      // Tickets where user is staff (not soft deleted)
-      $q->where('staff_id', $user->id)
-        ->whereNull('deleted_at');
+      $query->where(function ($query) use ($user) {
+        $query->where(function ($q) use ($user) {
+          $q->where('staff_id', $user->id)
+            ->orWhere('holder_id', $user->id);
+        })
+          ->orWhere(function ($q) use ($user) {
+            $q->where('holder_id', $user->id)
+              ->whereNotNull('deleted_at');
+          })
+          ->orWhereHas('logs', function ($q) use ($user) {
+            $q->where('staff_id', $user->id);
+          });
       });
 
-      // Also include soft deleted tickets where user is the holder
-      $query->orWhere(function ($q) use ($user) {
-      $q->withTrashed()
-        ->where('holder_id', $user->id)
-        ->whereNotNull('deleted_at');
-      });
-
-      // Also include tickets assigned to them via logs (not soft deleted)
-      $query->orWhereHas('logs', function ($q) use ($user) {
-      $q->where('staff_id', $user->id);
-      })->whereNull('deleted_at');
+      $query->whereNull('deleted_at');
     }
-    
-    
+
+
     if (isset($filters['sort_by'])) {
       $direction = $filters['sort_direction'] ?? 'desc';
       $query->orderBy($filters['sort_by'], $direction);
@@ -141,6 +137,10 @@ class TicketService
     $ticket = Ticket::where('id', $id)->first();
 
     TicketValidator::checkTicketExists($ticket);
+    TicketValidator::checkTicketIsCompleteOrClose(
+      $ticket,
+      'This ticket is closed to edit'
+    );
     TicketValidator::checkTicketBelongsToHolderOrStaff(
       $ticket,
       'You are not authorized to update this ticket'
@@ -156,6 +156,10 @@ class TicketService
       }
 
       if (isset($data['staff_id']) && $data['staff_id'] !== $oldStaffId) {
+        TicketValidator::checkUserAssignToThemselves(
+          $data['staff_id'],
+          'You cannot assign to yourself'
+        );
         $this->handleTicketStatusChange($ticket, TicketStatus::ASSIGNED->value);
       }
 
@@ -173,6 +177,10 @@ class TicketService
       $ticket,
       'You are not authorized to delete this ticket'
     );
+    TicketValidator::checkTicketCanBeDeleted(
+      $ticket,
+      'This ticket is not at right status to delete'
+    );
 
     $ticket = DB::transaction(function () use ($ticket) {
       $ticket->delete();
@@ -189,10 +197,21 @@ class TicketService
   public function getLogs(string $id, array $filters = []): array
   {
     $ticket = Ticket::findOrFail($id);
-
+    $user = Auth::user();
     $query = $ticket->logs()
       ->with(['staff', 'holder'])
       ->orderBy('created_at', 'desc');
+
+    if ($user->role == UserRoles::ADMIN->value) {
+      $query->withTrashed();
+    } else {
+      $query->where(function ($query) use ($user) {
+        $query->where('staff_id', $user->id)
+          ->orWhere('holder_id', $user->id)
+          ->whereNotNull('deleted_at');
+      });
+      $query->whereNull('deleted_at');
+    }
 
     $perPage = $filters['limit'] ?? PaginateConstant::DEFAULT_PER_PAGE->value;
     $page = $filters['page'] ?? PaginateConstant::DEFAULT_PAGE->value;
@@ -225,32 +244,6 @@ class TicketService
     $log->delete();
   }
 
-  public function getAttachments(string $id): array
-  {
-    $ticket = Ticket::findOrFail($id);
-
-    $attachments = $ticket->comments()
-      ->with(['attachments'])
-      ->get()
-      ->pluck('attachments')
-      ->flatten()
-      ->map(function ($attachment) {
-        return [
-          'id' => $attachment->id,
-          'file_name' => $attachment->file_name,
-          'file_path' => $attachment->file_path,
-          'file_size' => $attachment->file_size,
-          'file_extension' => $attachment->file_extension,
-          'content_type' => $attachment->content_type,
-          'created_at' => $attachment->created_at
-        ];
-      })
-      ->values()
-      ->toArray();
-
-    return $attachments;
-  }
-
   public function handleTicketStatusChange(
     Ticket $ticket,
     string $newStatus,
@@ -267,6 +260,10 @@ class TicketService
         'end_at' => now(),
         'to_status' => $newStatus,
       ]);
+    }
+
+    if ($newStatus == TicketStatus::COMPLETE->value || $newStatus == TicketStatus::FORCE_CLOSED->value) {
+      return;
     }
 
     TicketAuditLog::create([

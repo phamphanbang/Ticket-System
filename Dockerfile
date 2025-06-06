@@ -13,6 +13,7 @@ WORKDIR /var/www
     
 COPY src/ /var/www
 COPY ./docker/php/conf.d/xdebug.ini /usr/local/etc/php/conf.d/xdebug.ini
+COPY ./docker/php/conf.d/custom.ini /usr/local/etc/php/conf.d/custom.ini
 
 RUN composer install
 

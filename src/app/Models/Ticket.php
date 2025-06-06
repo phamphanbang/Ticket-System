@@ -40,6 +40,11 @@ class Ticket extends Model
         return $this->hasMany(TicketComment::class);
     }
 
+    public function attachments()
+    {
+        return $this->hasMany(Attachment::class);
+    }
+
     public function logs()
     {
         return $this->hasMany(TicketAuditLog::class);
