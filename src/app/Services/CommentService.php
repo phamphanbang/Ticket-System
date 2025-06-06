@@ -125,7 +125,7 @@ class CommentService
     return $comment->attachments()->create([
       'file_name' => $fileName,
       'file_extension' => $fileExtension,
-      'file_path' => $filePath, 
+      'file_path' => $filePath,
       'file_size' => $fileSize,
       'content_type' => $contentType
     ]);
@@ -170,15 +170,15 @@ class CommentService
   public function checkAuthorization(Ticket $ticket)
   {
     TicketValidator::checkTicketExists($ticket);
-    $userId = auth()->id();
+    $user = auth()->user();
     $isAuthorized = $ticket->logs()
-      ->where(function ($query) use ($userId) {
-        $query->where('holder_id', $userId)
-          ->orWhere('staff_id', $userId);
+      ->where(function ($query) use ($user) {
+        $query->where('holder_id', $user->id)
+          ->orWhere('staff_id', $user->id);
       })
       ->exists();
 
-    if (!$isAuthorized) {
+    if (!$isAuthorized && $user->role !== UserRoles::ADMIN->value) {
       throw new Exception(
         'You are not authorized to view this comment',
         Response::HTTP_FORBIDDEN
