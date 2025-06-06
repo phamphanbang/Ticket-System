@@ -20,6 +20,7 @@ Route::middleware(['auth:sanctum', 'api'])->group(function () {
     Route::post('/{id}/comments', [CommentController::class, 'store']);
     Route::get('/{id}/comments/{commentId}', [CommentController::class, 'show']);
   });
+  Route::delete('/logs/{id}', [TicketController::class, 'deleteLog']);
   Route::put('/comments/{commentId}', [CommentController::class, 'update']);
   Route::delete('/comments/{commentId}', [CommentController::class, 'destroy']);
   Route::get('attachments/{id}', [CommentController::class, 'download']);
