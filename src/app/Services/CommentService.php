@@ -24,7 +24,7 @@ class CommentService
 
   public function index(string $ticketId, array $filters = [])
   {
-    $query = TicketComment::with('attachments')->where('ticket_id', $ticketId);
+    $query = TicketComment::with('attachments','user')->where('ticket_id', $ticketId);
 
     $perPage = $filters['limit'] ?? PaginateConstant::DEFAULT_PER_PAGE->value;
     $page = $filters['page'] ?? PaginateConstant::DEFAULT_PAGE->value;
