@@ -27,7 +27,6 @@ class CommentController extends Controller
 
     public function store(CreateCommentRequest $request, $ticket_id)
     {
-        dd($request);
         $validated = $request->validated();
 
         $user = Auth::user();
