@@ -152,6 +152,10 @@ class TicketService
       }
 
       if (isset($data['staff_id']) && $data['staff_id'] !== $oldStaffId) {
+        TicketValidator::checkUserAssignToThemselves(
+          $data['staff_id'],
+          'You cannot assign to yourself'
+        );
         $this->handleTicketStatusChange($ticket, TicketStatus::ASSIGNED->value);
       }
 

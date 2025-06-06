@@ -18,7 +18,7 @@ class TicketValidator
     throw new ModelNotFoundException(__('messages.model_not_found', ['model' => 'Ticket']));
   }
 
-  public static function checkTicketBelongsToHolderOrStaff($ticket,$message)
+  public static function checkTicketBelongsToHolderOrStaff($ticket, $message)
   {
     $user = auth()->user();
     if ($ticket->holder_id !== $user->id && $ticket->staff_id !== $user->id) {
@@ -29,10 +29,21 @@ class TicketValidator
     }
   }
 
-  public static function checkTicketBelongsToHolder($ticket,$message)
+  public static function checkTicketBelongsToHolder($ticket, $message)
   {
     $user = auth()->user();
     if ($ticket->holder_id !== $user->id) {
+      throw new Exception(
+        $message,
+        Response::HTTP_FORBIDDEN
+      );
+    }
+  }
+
+  public static function checkUserAssignToThemselves($staffId, $message)
+  {
+    $user = auth()->user();
+    if ($user->id == $staffId) {
       throw new Exception(
         $message,
         Response::HTTP_FORBIDDEN
