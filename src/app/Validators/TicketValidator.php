@@ -8,6 +8,7 @@ use App\Exceptions\InvalidTicketAssignmentException;
 use App\Models\Ticket;
 use Exception;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
 
 class TicketValidator
@@ -72,6 +73,25 @@ class TicketValidator
     ) {
       throw new Exception(
         $message,
+        Response::HTTP_FORBIDDEN
+      );
+    }
+  }
+
+    public static function checkAuthorization(Ticket $ticket)
+  {
+    TicketValidator::checkTicketExists($ticket);
+    $user = Auth::user();
+    $isAuthorized = $ticket->logs()
+      ->where(function ($query) use ($user) {
+        $query->where('holder_id', $user->id)
+          ->orWhere('staff_id', $user->id);
+      })
+      ->exists();
+
+    if (!$isAuthorized && $user->role !== UserRoles::ADMIN->value) {
+      throw new Exception(
+        'You are not authorized to view this comment',
         Response::HTTP_FORBIDDEN
       );
     }

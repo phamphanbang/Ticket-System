@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AttachmentController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CommentController;
@@ -13,7 +14,7 @@ Route::middleware(['auth:sanctum', 'api'])->group(function () {
   Route::get('auth/me', [AuthController::class, 'me']);
   Route::apiResource('users', UserController::class);
   Route::apiResource('tickets', TicketController::class);
-  Route::get('tickets/{id}/attachments', [TicketController::class, 'getAttachments']);
+  Route::get('tickets/{id}/attachments', [AttachmentController::class, 'getTicketAttachments']);
   Route::prefix('tickets')->group(function () {
     Route::get('/{id}/logs', [TicketController::class, 'getLogs']);
     Route::get('/{id}/comments', [CommentController::class, 'index']);
@@ -23,6 +24,6 @@ Route::middleware(['auth:sanctum', 'api'])->group(function () {
   Route::delete('/logs/{id}', [TicketController::class, 'deleteLog']);
   Route::put('/comments/{commentId}', [CommentController::class, 'update']);
   Route::delete('/comments/{commentId}', [CommentController::class, 'destroy']);
-  Route::get('attachments/{id}', [CommentController::class, 'download']);
-  Route::delete('attachments/{id}', [CommentController::class, 'deleteAttachment']);
+  Route::get('attachments/{id}', [AttachmentController::class, 'download']);
+  Route::delete('attachments/{id}', [AttachmentController::class, 'deleteAttachment']);
 });

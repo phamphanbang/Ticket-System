@@ -8,6 +8,7 @@ use App\Http\Resources\CommentResource;
 use App\Services\CommentService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 
 class CommentController extends Controller
@@ -26,9 +27,10 @@ class CommentController extends Controller
 
     public function store(CreateCommentRequest $request, $ticket_id)
     {
+        dd($request);
         $validated = $request->validated();
 
-        $user = auth()->user();
+        $user = Auth::user();
 
         $validated['user_id'] = $user->id;
         $validated['ticket_id'] = $ticket_id;
@@ -67,24 +69,5 @@ class CommentController extends Controller
         return $this->success(
             __('messages.model_deleted', ['model' => 'Comment'])
         );
-    }
-
-    public function deleteAttachment(Request $request, string $attachmentId)
-    {
-        $this->commentService->deleteAttachment($attachmentId);
-        return $this->success(
-            __('messages.model_deleted', ['model' => 'Attachment'])
-        );
-    }
-
-    public function download(Request $request, string $attachmentId)
-    {
-        $attachment = $this->commentService->download($attachmentId);
-
-        return Storage::download(
-            $attachment->file_path,
-            $attachment->file_name,
-            ['Content-Type' => $attachment->content_type]
-          );
     }
 }

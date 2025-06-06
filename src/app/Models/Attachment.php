@@ -13,6 +13,7 @@ class Attachment extends Model
     protected $keyType = 'string';
 
     protected $fillable = [
+        'ticket_id',
         'comment_id',
         'file_path',
         'file_name',
@@ -24,6 +25,11 @@ class Attachment extends Model
     public function comment()
     {
         return $this->belongsTo(TicketComment::class , 'comment_id');
+    }
+
+    public function ticket()
+    {
+        return $this->belongsTo(Ticket::class ,'ticket_id');
     }
     
     
