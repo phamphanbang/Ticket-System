@@ -137,6 +137,10 @@ class TicketService
     $ticket = Ticket::where('id', $id)->first();
 
     TicketValidator::checkTicketExists($ticket);
+    TicketValidator::checkTicketIsCompleteOrClose(
+      $ticket,
+      'This ticket is closed to edit'
+    );
     TicketValidator::checkTicketBelongsToHolderOrStaff(
       $ticket,
       'You are not authorized to update this ticket'
@@ -267,6 +271,10 @@ class TicketService
         'end_at' => now(),
         'to_status' => $newStatus,
       ]);
+    }
+
+    if ($newStatus == TicketStatus::COMPLETE->value || $newStatus == TicketStatus::FORCE_CLOSED->value) {
+      return;
     }
 
     TicketAuditLog::create([
