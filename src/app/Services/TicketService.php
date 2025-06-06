@@ -51,30 +51,26 @@ class TicketService
     }
 
     if ($user->role == UserRoles::ADMIN->value) {
-      // Admin: get all tickets, including soft deleted
       $query->withTrashed();
     } else {
-      // Non-admin: tickets assigned to them (from logs or staff_id), excluding soft deleted
-      $query->where(function ($q) use ($user) {
-      // Tickets where user is staff (not soft deleted)
-      $q->where('staff_id', $user->id)
-        ->whereNull('deleted_at');
+      $query->where(function ($query) use ($user) {
+        $query->where(function ($q) use ($user) {
+          $q->where('staff_id', $user->id)
+            ->orWhere('holder_id', $user->id);
+        })
+          ->orWhere(function ($q) use ($user) {
+            $q->where('holder_id', $user->id)
+              ->whereNotNull('deleted_at');
+          })
+          ->orWhereHas('logs', function ($q) use ($user) {
+            $q->where('staff_id', $user->id);
+          });
       });
 
-      // Also include soft deleted tickets where user is the holder
-      $query->orWhere(function ($q) use ($user) {
-      $q->withTrashed()
-        ->where('holder_id', $user->id)
-        ->whereNotNull('deleted_at');
-      });
-
-      // Also include tickets assigned to them via logs (not soft deleted)
-      $query->orWhereHas('logs', function ($q) use ($user) {
-      $q->where('staff_id', $user->id);
-      })->whereNull('deleted_at');
+      $query->whereNull('deleted_at');
     }
-    
-    
+
+
     if (isset($filters['sort_by'])) {
       $direction = $filters['sort_direction'] ?? 'desc';
       $query->orderBy($filters['sort_by'], $direction);
