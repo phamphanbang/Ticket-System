@@ -14,12 +14,12 @@ use App\Constants\UserRoles;
 use App\Mail\ClientTicketCreated;
 use App\Mail\ClientTicketProcessing;
 use App\Mail\TicketClosed;
-use App\Models\Task;
 use App\Models\Ticket;
 use App\Models\TicketAuditLog;
 use App\Traits\HasAuditLog;
 use App\Validators\TicketValidator;
 use Exception;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Symfony\Component\HttpFoundation\Response;
@@ -177,6 +177,10 @@ class TicketService
       $ticket,
       'You are not authorized to delete this ticket'
     );
+    TicketValidator::checkTicketCanBeDeleted(
+      $ticket,
+      'This ticket is not at right status to delete'
+    );
 
     $ticket = DB::transaction(function () use ($ticket) {
       $ticket->delete();
@@ -193,10 +197,21 @@ class TicketService
   public function getLogs(string $id, array $filters = []): array
   {
     $ticket = Ticket::findOrFail($id);
-
+    $user = Auth::user();
     $query = $ticket->logs()
       ->with(['staff', 'holder'])
       ->orderBy('created_at', 'desc');
+
+    if ($user->role == UserRoles::ADMIN->value) {
+      $query->withTrashed();
+    } else {
+      $query->where(function ($query) use ($user) {
+        $query->where('staff_id', $user->id)
+          ->orWhere('holder_id', $user->id)
+          ->whereNotNull('deleted_at');
+      });
+      $query->whereNull('deleted_at');
+    }
 
     $perPage = $filters['limit'] ?? PaginateConstant::DEFAULT_PER_PAGE->value;
     $page = $filters['page'] ?? PaginateConstant::DEFAULT_PAGE->value;

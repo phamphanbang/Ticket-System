@@ -63,4 +63,17 @@ class TicketValidator
       );
     }
   }
+
+  public static function checkTicketCanBeDeleted($ticket, $message)
+  {
+    if (
+      $ticket->status !== TicketStatus::COMPLETE->value ||
+      $ticket->status !== TicketStatus::FORCE_CLOSED->value
+    ) {
+      throw new Exception(
+        $message,
+        Response::HTTP_FORBIDDEN
+      );
+    }
+  }
 }
