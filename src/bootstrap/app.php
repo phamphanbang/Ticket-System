@@ -1,6 +1,7 @@
 <?php
 
 use App\Exceptions\InvalidTicketAssignmentException;
+use App\Http\Middleware\Auth0JWTMiddleware;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Application;
@@ -27,6 +28,7 @@ return Application::configure(basePath: dirname(__DIR__))
             EnsureFrontendRequestsAreStateful::class,
             HandleCors::class,
             SubstituteBindings::class,
+            Auth0JWTMiddleware::class,
         ]);
     })
     ->withCommands([
@@ -38,7 +40,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 $message = $e->getMessage();
                 $code = $e->getCode() == 0 ? Response::HTTP_INTERNAL_SERVER_ERROR : $e->getCode();
                 $errors = null;
-                // dd($e);
+                dd($e);
                 if ($e instanceof AuthenticationException) {
                     return response()->error(
                         message: $message,
