@@ -3,7 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\User;
-use Auth0\Laravel\Facade\Auth0;
+use Auth0\Laravel\Entities\CredentialEntity;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -18,38 +18,25 @@ class Auth0JWTMiddleware
      */
     public function handle(Request $request, Closure $next): Response
     {
-        dd($request->user());
-        $token = Auth0::decode($request);
+        $userInfo = $request->user();
+        $email = $userInfo->getAttribute(env('AUTH0_CUSTOM_DOMAIN').'email');
+        $name = $userInfo->getAttribute(env('AUTH0_CUSTOM_DOMAIN').'name');
+        $auth0_id = $userInfo->getAttribute('sub');
+
+        $user = User::where('auth0_id', $auth0_id)->orWhere('email', $email)->first();
         
-        if (! $token?->valid()) {
-            return response()->json(['message' => 'Unauthorized: Invalid or missing token'], 401);
-        }
-
-        $payload = $token->user ?? [];
-
-        if (!isset($payload['email'], $payload['sub'])) {
-            return response()->json(['message' => 'Unauthorized: Missing required user info'], 401);
-        }
-
-        $user = User::where('auth0_id', $payload['sub'])->orWhere('email', $payload['email'])->first();
-
-        if (!$user && isset($payload['email'])) {
-            $emailParts = explode('@', $payload['email']);
-            $payload['name'] = $emailParts[0];
-        }
-
         if (!$user) {
             $user = User::create([
-                'name'      => $payload['name'] ?? 'Unknown',
-                'email'     => $payload['email'],
-                'auth0_id'  => $payload['sub'],
-                'avatar'    => $payload['picture'] ?? null,
+                'name'      => $name,
+                'email'     => $email,
+                'auth0_id'  => $auth0_id,
+                'avatar'    => $userInfo->getAttribute(env('AUTH0_CUSTOM_DOMAIN').'picture') ?? null,
                 'role'      => 'user',
                 'password'  => bcrypt(str()->random(32)), 
             ]);
         }
-
-        Auth::login($user); 
+        $credential = CredentialEntity::create($user);
+        Auth::login($credential); 
 
         return $next($request);
     }
