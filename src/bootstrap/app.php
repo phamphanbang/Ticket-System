@@ -28,6 +28,9 @@ return Application::configure(basePath: dirname(__DIR__))
             EnsureFrontendRequestsAreStateful::class,
             HandleCors::class,
             SubstituteBindings::class,
+            
+        ]);
+        $middleware->appendToGroup('auth', [
             Auth0JWTMiddleware::class,
         ]);
     })

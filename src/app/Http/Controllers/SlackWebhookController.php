@@ -18,20 +18,21 @@ class SlackWebhookController extends Controller
     ) {}
     public function sendTestNotification(Ticket $ticket)
     {
-        $this->slackService->sendTestNotification($ticket);
+        $this->slackService->sendAssignedNotification($ticket);
 
         return $this->success(
             null,
             'Test notification sent successfully'
         );
     }
+
     public function handle(Request $request)
     {
         $payload = $request->all();
 
         // Slack URL verification challenge
         if (isset($payload['type']) && $payload['type'] === 'url_verification') {
-            return response($payload['challenge'], 200);
+            return response($payload['challenge'], 200)->header('Content-Type', 'text/plain');
         }
 
         // Handle team_join event

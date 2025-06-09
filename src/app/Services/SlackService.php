@@ -1,15 +1,18 @@
-<?php 
+<?php
 
 namespace App\Services;
 
 use App\Models\Ticket;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class SlackService
 {
-  public function sendTestNotification(Ticket $ticket): void
+  public function sendAssignedNotification(Ticket $ticket): void
   {
+    Log::info('start sending assigned notification');
     $username = $ticket->staff->name;
+    Log::info('username: ' . $username);
     $ticketTitle = $ticket->title;
     $ticketUrl = env('FRONTEND_URL') . '/tickets/' . $ticket->id;
 
@@ -50,6 +53,61 @@ class SlackService
     $dmResponse = Http::withToken(env('SLACK_BOT_USER_OAUTH_TOKEN'))
       ->post('https://slack.com/api/conversations.open', [
         'users' => $ticket->staff->slack_user_id
+      ]);
+
+    $channelId = $dmResponse->json('channel.id');
+    Log::info('channelId: ' . $dmResponse);
+
+    $sendResponse = Http::withToken(env('SLACK_BOT_USER_OAUTH_TOKEN'))
+      ->post('https://slack.com/api/chat.postMessage', [
+        'channel' => $channelId,
+        'blocks' => $blocks
+      ]);
+  }
+
+  public function sendCompletedNotification(Ticket $ticket): void
+  {
+    $username = $ticket->holder->name;
+    $ticketTitle = $ticket->title;
+    $ticketUrl = env('FRONTEND_URL') . '/tickets/' . $ticket->id;
+
+    $blocks = [
+      [
+        "type" => "section",
+        "text" => [
+          "type" => "mrkdwn",
+          "text" => "✅ Hey, *{$username}*!\nYour ticket has been *completed*:\n>*{$ticketTitle}*"
+        ]
+      ],
+      [
+        "type" => "context",
+        "elements" => [
+          [
+            "type" => "mrkdwn",
+            "text" => "You can review the completed ticket in the Ticket app."
+          ]
+        ]
+      ],
+      [
+        "type" => "actions",
+        "elements" => [
+          [
+            "type" => "button",
+            "text" => [
+              "type" => "plain_text",
+              "text" => "📄 View Completed Ticket",
+              "emoji" => true
+            ],
+            "style" => "primary",
+            "url" => $ticketUrl
+          ]
+        ]
+      ]
+    ];
+
+    $dmResponse = Http::withToken(env('SLACK_BOT_USER_OAUTH_TOKEN'))
+      ->post('https://slack.com/api/conversations.open', [
+        'users' => $ticket->holder->slack_user_id
       ]);
 
     $channelId = $dmResponse->json('channel.id');

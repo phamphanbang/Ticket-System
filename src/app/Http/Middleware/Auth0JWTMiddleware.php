@@ -38,7 +38,7 @@ class Auth0JWTMiddleware
             'email'     => $email,
             'auth0_id'  => $auth0_id,
             'avatar'    => $userInfo->getAttribute(env('AUTH0_CUSTOM_DOMAIN') . 'picture') ?? null,
-            'role'      => 'user',
+            'role'      => $user->role ?? 'user',
             'password'  => bcrypt(str()->random(32)),
             'slack_user_id' => $slack_user_id,
         ]);
