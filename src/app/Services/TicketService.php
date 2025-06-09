@@ -16,6 +16,7 @@ use App\Mail\ClientTicketProcessing;
 use App\Mail\TicketClosed;
 use App\Models\Ticket;
 use App\Models\TicketAuditLog;
+use App\Notifications\StaffAssignedNotification;
 use App\Traits\HasAuditLog;
 use App\Validators\TicketValidator;
 use Exception;
@@ -161,6 +162,7 @@ class TicketService
           'You cannot assign to yourself'
         );
         $this->handleTicketStatusChange($ticket, TicketStatus::ASSIGNED->value);
+        // $ticket->staff->notify(new StaffAssignedNotification());
       }
 
       return $ticket;
@@ -201,18 +203,17 @@ class TicketService
     $query = $ticket->logs()
       ->with(['staff', 'holder'])
       ->orderBy('created_at', 'desc');
-
     if ($user->role == UserRoles::ADMIN->value) {
       $query->withTrashed();
     } else {
       $query->where(function ($query) use ($user) {
-        $query->where('staff_id', $user->id)
-          ->orWhere('holder_id', $user->id)
-          ->whereNotNull('deleted_at');
+        $query->where(function ($q) use ($user) {
+          $q->where('staff_id', $user->id)
+            ->orWhere('holder_id', $user->id);
+        });
+        $query->whereNull('deleted_at');
       });
-      $query->whereNull('deleted_at');
     }
-
     $perPage = $filters['limit'] ?? PaginateConstant::DEFAULT_PER_PAGE->value;
     $page = $filters['page'] ?? PaginateConstant::DEFAULT_PAGE->value;
 
