@@ -22,7 +22,9 @@ use App\Validators\TicketValidator;
 use Exception;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Notification;
 use Symfony\Component\HttpFoundation\Response;
 
 class TicketService
@@ -162,7 +164,7 @@ class TicketService
           'You cannot assign to yourself'
         );
         $this->handleTicketStatusChange($ticket, TicketStatus::ASSIGNED->value);
-        // $ticket->staff->notify(new StaffAssignedNotification());
+
       }
 
       return $ticket;

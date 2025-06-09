@@ -22,21 +22,29 @@ class Auth0JWTMiddleware
         $email = $userInfo->getAttribute('http://ES-ticket-app.com/email');
         $name = $userInfo->getAttribute('http://ES-ticket-app.com/name');
         $auth0_id = $userInfo->getAttribute('sub');
+        $slack_user_id = null;
+        if ($userInfo->getAttribute('http://ES-ticket-app.com/slack_user_id')) {
+            $slack_id_parts = explode('|', $userInfo->getAttribute('http://ES-ticket-app.com/slack_user_id'));
+            $slack_user_id = explode('-', end($slack_id_parts))[1];
+        }
 
         $user = User::where('auth0_id', $auth0_id)->orWhere('email', $email)->first();
-        
-        if (!$user) {
-            $user = User::create([
-                'name'      => $name,
-                'email'     => $email,
-                'auth0_id'  => $auth0_id,
-                'avatar'    => $userInfo->getAttribute(env('AUTH0_CUSTOM_DOMAIN').'picture') ?? null,
-                'role'      => 'user',
-                'password'  => bcrypt(str()->random(32)), 
-            ]);
-        }
+
+
+        $user = User::updateOrCreate([
+            'email'     => $email,
+        ], [
+            'name'      => $name,
+            'email'     => $email,
+            'auth0_id'  => $auth0_id,
+            'avatar'    => $userInfo->getAttribute(env('AUTH0_CUSTOM_DOMAIN') . 'picture') ?? null,
+            'role'      => 'user',
+            'password'  => bcrypt(str()->random(32)),
+            'slack_user_id' => $slack_user_id,
+        ]);
+
         $credential = CredentialEntity::create($user);
-        Auth::login($credential); 
+        Auth::login($credential);
 
         return $next($request);
     }

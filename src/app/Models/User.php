@@ -27,6 +27,7 @@ class User extends Authenticatable
         'role',
         'password',
         'auth0_id',
+        'slack_user_id',
         'avatar',
     ];
 
