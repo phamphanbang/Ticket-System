@@ -1,4 +1,4 @@
-<?php 
+<?php
 // app/Http/Controllers/SlackWebhookController.php
 
 namespace App\Http\Controllers;
@@ -12,19 +12,19 @@ use Illuminate\Support\Facades\Log;
 
 class SlackWebhookController extends Controller
 {
-  use ApiResponse;
-  public function __construct(
-    protected SlackService $slackService,
-  ) {}
-  public function sendTestNotification(Ticket $ticket)
-  {
-      $this->slackService->sendTestNotification($ticket);
+    use ApiResponse;
+    public function __construct(
+        protected SlackService $slackService,
+    ) {}
+    public function sendTestNotification(Ticket $ticket)
+    {
+        $this->slackService->sendTestNotification($ticket);
 
-      return $this->success(
-          null,
-          'Test notification sent successfully'
-      );
-  }
+        return $this->success(
+            null,
+            'Test notification sent successfully'
+        );
+    }
     public function handle(Request $request)
     {
         $payload = $request->all();
