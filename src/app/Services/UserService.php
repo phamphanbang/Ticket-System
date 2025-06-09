@@ -76,12 +76,6 @@ class UserService
   {
     $user = User::findOrFail($id);
 
-    if (isset($data['role'])) {
-      $role = $data['role'];
-      unset($data['role']);
-      $user->syncRoles([$role]);
-    }
-
     $user->update($data);
     return new UserResource($user);
   }
