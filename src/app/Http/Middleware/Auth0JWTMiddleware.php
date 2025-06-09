@@ -19,8 +19,8 @@ class Auth0JWTMiddleware
     public function handle(Request $request, Closure $next): Response
     {
         $userInfo = $request->user();
-        $email = $userInfo->getAttribute(env('AUTH0_CUSTOM_DOMAIN').'email');
-        $name = $userInfo->getAttribute(env('AUTH0_CUSTOM_DOMAIN').'name');
+        $email = $userInfo->getAttribute('http://ES-ticket-app.com/email');
+        $name = $userInfo->getAttribute('http://ES-ticket-app.com/name');
         $auth0_id = $userInfo->getAttribute('sub');
 
         $user = User::where('auth0_id', $auth0_id)->orWhere('email', $email)->first();
