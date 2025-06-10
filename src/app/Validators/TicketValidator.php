@@ -21,7 +21,7 @@ class TicketValidator
 
   public static function checkTicketBelongsToHolderOrStaff($ticket, $message)
   {
-    $user = auth()->user();
+    $user = Auth::user();
     if ($ticket->holder_id !== $user->id && $ticket->staff_id !== $user->id) {
       throw new Exception(
         $message,
@@ -32,7 +32,7 @@ class TicketValidator
 
   public static function checkTicketBelongsToHolder($ticket, $message)
   {
-    $user = auth()->user();
+    $user = Auth::user();
     if ($ticket->holder_id !== $user->id) {
       throw new Exception(
         $message,
@@ -43,7 +43,7 @@ class TicketValidator
 
   public static function checkUserAssignToThemselves($staffId, $message)
   {
-    $user = auth()->user();
+    $user = Auth::user();
     if ($user->id == $staffId) {
       throw new Exception(
         $message,
@@ -56,7 +56,7 @@ class TicketValidator
   {
     if (
       $ticket->status == TicketStatus::COMPLETE->value ||
-      $ticket->status == TicketStatus::FORCE_CLOSED->value
+      $ticket->status == TicketStatus::ARCHIVED->value
     ) {
       throw new Exception(
         $message,
@@ -69,7 +69,7 @@ class TicketValidator
   {
     if (
       $ticket->status !== TicketStatus::COMPLETE->value ||
-      $ticket->status !== TicketStatus::FORCE_CLOSED->value
+      $ticket->status !== TicketStatus::ARCHIVED->value
     ) {
       throw new Exception(
         $message,

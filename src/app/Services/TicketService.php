@@ -35,7 +35,7 @@ class TicketService
   public function index(array $filters = []): array
   {
     $query = Ticket::query()->with(['client', 'holder', 'staff']);
-    $user = auth()->user();
+    $user = Auth::user();
     if (isset($filters['search'])) {
       $query->where(function ($q) use ($filters) {
         $q->where('title', 'like', "%{$filters['search']}%")
@@ -108,7 +108,7 @@ class TicketService
     ]);
     $data['client_id'] = $client->id;
     $data['status'] = TicketStatus::NEW->value;
-    $data['holder_id'] = auth()->user()->id;
+    $data['holder_id'] = Auth::user()->id;
     $ticket = DB::transaction(function () use ($data) {
       $ticket = Ticket::create($data);
 
@@ -184,10 +184,6 @@ class TicketService
       $ticket,
       'You are not authorized to delete this ticket'
     );
-    // TicketValidator::checkTicketCanBeDeleted(
-    //   $ticket,
-    //   'This ticket is not at right status to delete'
-    // );
 
     $ticket = DB::transaction(function () use ($ticket) {
       $ticket->delete();
@@ -238,7 +234,7 @@ class TicketService
   {
     $log = TicketAuditLog::findOrFail($id);
 
-    $user = auth()->user();
+    $user = Auth::user();
 
     if ($user->role !== UserRoles::ADMIN->value && $user->id !== $log->holder_id) {
       throw new Exception(
@@ -269,7 +265,7 @@ class TicketService
       $log = $latestAuditLog;
     }
 
-    if ($newStatus == TicketStatus::COMPLETE->value || $newStatus == TicketStatus::FORCE_CLOSED->value) {
+    if ($newStatus == TicketStatus::COMPLETE->value || $newStatus == TicketStatus::ARCHIVED->value) {
       return $log;
     }
 
