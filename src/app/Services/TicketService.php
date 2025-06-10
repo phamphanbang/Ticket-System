@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\Mail;
 use Symfony\Component\HttpFoundation\Response;
 use App\Jobs\NotifyStaffHasBeenAssigned;
 use App\Jobs\NotifyTicketHasBeenCompleted;
+use App\Mail\ClientTicketCompleted;
 
 class TicketService
 {
@@ -154,6 +155,8 @@ class TicketService
         $log = $this->handleTicketStatusChange($ticket, $data['status']);
         if ($data['status'] == TicketStatus::COMPLETE->value) {
           NotifyTicketHasBeenCompleted::dispatch($ticket);
+          Mail::to($ticket->client->email)
+            ->queue(new ClientTicketCompleted($ticket));
         }
       }
 

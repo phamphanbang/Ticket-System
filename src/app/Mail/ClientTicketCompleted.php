@@ -9,7 +9,7 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class TicketClosed extends Mailable
+class ClientTicketCompleted extends Mailable
 {
   use Queueable, SerializesModels;
 
@@ -27,11 +27,10 @@ class TicketClosed extends Mailable
   public function content(): Content
   {
     return new Content(
-      view: 'mails.clients.ticket_is_closed',
+      view: 'mails.clients.ticket_is_completed',
       with: [
         'ticket' => $this->ticket,
         'client' => $this->ticket->client,
-        'tasks' => $this->ticket->tasks
       ]
     );
   }
