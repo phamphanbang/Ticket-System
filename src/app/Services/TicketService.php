@@ -6,6 +6,7 @@ use App\Constants\AuditActions;
 use App\Constants\PaginateConstant;
 use App\Constants\TicketStatus;
 use App\Constants\UserRoles;
+use App\Events\AuditLogDeleted;
 use App\Events\AuditLogged;
 use App\Events\TicketUpdated;
 use App\Mail\ClientTicketCreated;
@@ -245,7 +246,7 @@ class TicketService
         Response::HTTP_FORBIDDEN
       );
     }
-
+    event(new AuditLogDeleted($log));
     $log->delete();
   }
 

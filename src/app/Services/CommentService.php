@@ -33,6 +33,7 @@ class CommentService
     $perPage = $filters['limit'] ?? PaginateConstant::DEFAULT_PER_PAGE->value;
     $page = $filters['page'] ?? PaginateConstant::DEFAULT_PAGE->value;
 
+    $query->orderBy('created_at','desc');
     $paginator = $query->paginate($perPage, ['*'], 'page', $page);
 
     return [
@@ -82,7 +83,7 @@ class CommentService
   public function update(string $id, array $data): TicketComment
   {
     $comment = TicketComment::where('id', $id)->firstOrFail();
-
+    
     if ($comment->user_id !== auth()->id() && auth()->user()->role !== UserRoles::ADMIN->value) {
       throw new Exception(
         'You are not authorized to update this comment',

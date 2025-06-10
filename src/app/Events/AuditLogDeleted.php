@@ -13,7 +13,7 @@ use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-final class AuditLogged implements ShouldBroadcast, ShouldDispatchAfterCommit
+final class AuditLogDeleted implements ShouldBroadcast, ShouldDispatchAfterCommit
 {
   use Dispatchable, InteractsWithSockets, SerializesModels;
 
@@ -28,7 +28,7 @@ final class AuditLogged implements ShouldBroadcast, ShouldDispatchAfterCommit
 
   public function broadcastAs(): string
   {
-    return 'audit.logged';
+    return 'audit.logged.deleted';
   }
 
   public function broadcastWith(): array

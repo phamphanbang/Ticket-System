@@ -50,8 +50,8 @@ class CommentCreated implements ShouldBroadcast, ShouldDispatchAfterCommit
       'ticket' => $this->comment->ticket,
       'user' => $this->comment->user,
       'attachments' => $this->comment->attachments ?? [],
-      'created_at' => $this->comment->created_at,
-      'updated_at' => $this->comment->updated_at,
+      'created_at' => $this->comment->created_at->format('Y-m-d H:i:s'),
+      'updated_at' => $this->comment->updated_at->format('Y-m-d H:i:s'),
     ];
   }
 }

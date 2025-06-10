@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Constants\UserRoles;
+use App\Events\AttachmentCreated;
 use App\Models\Attachment;
 use App\Models\Ticket;
 use App\Validators\TicketValidator;
@@ -26,7 +27,7 @@ class AttachmentService
     $fileSize = $file->getSize();
 
     $filePath = $file->store("tickets/{$ticket_id}");
-    return Attachment::create([
+    $attachment = Attachment::create([
       'ticket_id' => $ticket_id,
       'comment_id' => $comment_id,
       'file_name' => $fileName,
@@ -35,6 +36,8 @@ class AttachmentService
       'file_size' => $fileSize,
       'content_type' => $contentType
     ]);
+    event(new AttachmentCreated($attachment));
+    return $attachment;
   }
 
   public function deleteAttachment(string $attachmentId): bool
