@@ -6,7 +6,7 @@ use App\Constants\AuditActions;
 use App\Constants\PaginateConstant;
 use App\Constants\TicketStatus;
 use App\Constants\UserRoles;
-use App\Events\Auditlogged;
+use App\Events\AuditLogged;
 use App\Events\TicketUpdated;
 use App\Mail\ClientTicketCreated;
 use App\Models\Ticket;
@@ -173,7 +173,7 @@ class TicketService
     });
     event(new TicketUpdated($ticket));
     if ($log) {
-      event(new Auditlogged($log));
+      event(new AuditLogged($log));
     }
 
     return $ticket->fresh();

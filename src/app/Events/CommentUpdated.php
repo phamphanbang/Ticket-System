@@ -13,7 +13,7 @@ use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class CommentCreated implements ShouldBroadcast, ShouldDispatchAfterCommit
+class CommentUpdated implements ShouldBroadcast, ShouldDispatchAfterCommit
 {
   use Dispatchable, InteractsWithSockets, SerializesModels;
 
@@ -39,7 +39,7 @@ class CommentCreated implements ShouldBroadcast, ShouldDispatchAfterCommit
 
   public function broadcastAs(): string
   {
-    return 'comment.created';
+    return 'comment.updated';
   }
 
   public function broadcastWith()

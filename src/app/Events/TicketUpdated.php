@@ -2,6 +2,7 @@
 
 namespace App\Events;
 
+use App\Http\Resources\TicketResource;
 use App\Models\Ticket;
 use App\Models\TicketAuditLog;
 use Illuminate\Broadcasting\Channel;
@@ -33,8 +34,13 @@ class TicketUpdated implements ShouldBroadcast, ShouldDispatchAfterCommit
   public function broadcastOn(): array
   {
     return [
-      new PrivateChannel('tickets.' . $this->ticket->id),
+      new Channel('tickets.' . $this->ticket->id),
     ];
+  }
+
+  public function broadcastAs(): string
+  {
+    return 'ticket.updated';
   }
 
   public function broadcastWith()
@@ -43,17 +49,13 @@ class TicketUpdated implements ShouldBroadcast, ShouldDispatchAfterCommit
       'id' => $this->ticket->id,
       'title' => $this->ticket->title,
       'description' => $this->ticket->description,
+      'client_email' => $this->ticket->client?->email,
+      'client_name' => $this->ticket->client?->name,
       'status' => $this->ticket->status,
-      'holder' => $this->ticket->holder ? [
-        'id' => $this->ticket->holder->id,
-        'name' => $this->ticket->holder->name,
-      ] : [],
-      'staff' => $this->ticket->staff ? [
-        'id' => $this->ticket->staff->id,
-        'name' => $this->ticket->staff->name,
-      ] : [],
-      'created_at' => $this->ticket->created_at,
-      'updated_at' => $this->ticket->updated_at,
+      'holder' => $this->ticket->holder,
+      'staff' => $this->ticket->staff ?? [],
+      'created_at' => $this->ticket->created_at->format('Y-m-d H:i:s'),
+      'updated_at' => $this->ticket->updated_at->format('Y-m-d H:i:s'),
     ];
   }
 }
