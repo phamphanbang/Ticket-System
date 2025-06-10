@@ -4,11 +4,14 @@ use App\Http\Controllers\AttachmentController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CommentController;
+use App\Http\Controllers\SlackWebhookController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\UserController;
 
 Route::post('auth/login', [AuthController::class, 'login']);
 Route::middleware('auth:sanctum')->post('auth/logout', [AuthController::class, 'logout']);
+
+Route::post('slack/user', [SlackWebhookController::class, 'handle']);
 
 Route::middleware(['auth'])->group(function () {
   Route::get('auth/me', [AuthController::class, 'me']);
@@ -26,4 +29,5 @@ Route::middleware(['auth'])->group(function () {
   Route::delete('/comments/{commentId}', [CommentController::class, 'destroy']);
   Route::get('attachments/{id}', [AttachmentController::class, 'download']);
   Route::delete('attachments/{id}', [AttachmentController::class, 'deleteAttachment']);
+  Route::get('test-notification/{id}', [SlackWebhookController::class, 'sendTestNotification']);
 });

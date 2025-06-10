@@ -28,11 +28,15 @@ return Application::configure(basePath: dirname(__DIR__))
             EnsureFrontendRequestsAreStateful::class,
             HandleCors::class,
             SubstituteBindings::class,
+            
+        ]);
+        $middleware->appendToGroup('auth', [
             Auth0JWTMiddleware::class,
         ]);
     })
     ->withCommands([
         \App\Console\Commands\FetchClientMails::class,
+        \App\Console\Commands\SyncSlackUsers::class,
     ])
     ->withExceptions(function (Exceptions $exceptions) {
         $exceptions->render(
@@ -40,7 +44,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 $message = $e->getMessage();
                 $code = $e->getCode() == 0 ? Response::HTTP_INTERNAL_SERVER_ERROR : $e->getCode();
                 $errors = null;
-                dd($e);
+                // dd($e);
                 if ($e instanceof AuthenticationException) {
                     return response()->error(
                         message: $message,

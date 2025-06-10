@@ -3,17 +3,10 @@
 namespace App\Services;
 
 use App\Constants\AuditActions;
-use App\Constants\EstimationStatus;
-use App\Constants\ExecutionStatus;
-use App\Constants\ExternalStatus;
-use App\Constants\InternalStatus;
 use App\Constants\PaginateConstant;
-use App\Constants\TaskPhase;
 use App\Constants\TicketStatus;
 use App\Constants\UserRoles;
 use App\Mail\ClientTicketCreated;
-use App\Mail\ClientTicketProcessing;
-use App\Mail\TicketClosed;
 use App\Models\Ticket;
 use App\Models\TicketAuditLog;
 use App\Traits\HasAuditLog;
@@ -23,6 +16,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Symfony\Component\HttpFoundation\Response;
+use App\Jobs\NotifyStaffHasBeenAssigned;
+use App\Jobs\NotifyTicketHasBeenCompleted;
 
 class TicketService
 {
@@ -153,6 +148,9 @@ class TicketService
 
       if (isset($data['status']) && $data['status'] !== $oldStatus) {
         $this->handleTicketStatusChange($ticket, $data['status']);
+        if ($data['status'] == TicketStatus::COMPLETE->value) {
+          NotifyTicketHasBeenCompleted::dispatch($ticket);
+        }
       }
 
       if (isset($data['staff_id']) && $data['staff_id'] !== $oldStaffId) {
@@ -161,6 +159,7 @@ class TicketService
           'You cannot assign to yourself'
         );
         $this->handleTicketStatusChange($ticket, TicketStatus::ASSIGNED->value);
+        NotifyStaffHasBeenAssigned::dispatch($ticket);
       }
 
       return $ticket;
@@ -177,10 +176,10 @@ class TicketService
       $ticket,
       'You are not authorized to delete this ticket'
     );
-    TicketValidator::checkTicketCanBeDeleted(
-      $ticket,
-      'This ticket is not at right status to delete'
-    );
+    // TicketValidator::checkTicketCanBeDeleted(
+    //   $ticket,
+    //   'This ticket is not at right status to delete'
+    // );
 
     $ticket = DB::transaction(function () use ($ticket) {
       $ticket->delete();
@@ -201,18 +200,17 @@ class TicketService
     $query = $ticket->logs()
       ->with(['staff', 'holder'])
       ->orderBy('created_at', 'desc');
-
     if ($user->role == UserRoles::ADMIN->value) {
       $query->withTrashed();
     } else {
       $query->where(function ($query) use ($user) {
-        $query->where('staff_id', $user->id)
-          ->orWhere('holder_id', $user->id)
-          ->whereNotNull('deleted_at');
+        $query->where(function ($q) use ($user) {
+          $q->where('staff_id', $user->id)
+            ->orWhere('holder_id', $user->id);
+        });
+        $query->whereNull('deleted_at');
       });
-      $query->whereNull('deleted_at');
     }
-
     $perPage = $filters['limit'] ?? PaginateConstant::DEFAULT_PER_PAGE->value;
     $page = $filters['page'] ?? PaginateConstant::DEFAULT_PAGE->value;
 
