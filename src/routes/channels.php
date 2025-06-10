@@ -2,6 +2,14 @@
 
 use Illuminate\Support\Facades\Broadcast;
 
-Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
-    return (int) $user->id === (int) $id;
+Broadcast::channel('tickets.{id}', function($id) {
+    return true;
+});
+
+Broadcast::channel('tickets.{id}.comments', function($id) {
+    return true;
+});
+
+Broadcast::channel('tickets.{id}.logs', function($id) {
+    return true;
 });

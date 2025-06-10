@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Constants\PaginateConstant;
 use App\Constants\UserRoles;
+use App\Events\CommentCreated;
 use App\Models\Attachment;
 use App\Models\Ticket;
 use App\Models\TicketComment;
@@ -73,6 +74,7 @@ class CommentService
 
       return $comment;
     });
+    event(new CommentCreated($comment));
     return $comment;
   }
 

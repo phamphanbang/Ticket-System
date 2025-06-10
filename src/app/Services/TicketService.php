@@ -6,6 +6,8 @@ use App\Constants\AuditActions;
 use App\Constants\PaginateConstant;
 use App\Constants\TicketStatus;
 use App\Constants\UserRoles;
+use App\Events\Auditlogged;
+use App\Events\TicketUpdated;
 use App\Mail\ClientTicketCreated;
 use App\Models\Ticket;
 use App\Models\TicketAuditLog;
@@ -88,6 +90,8 @@ class TicketService
     ];
   }
 
+
+
   public function show(string $id): Ticket
   {
     $ticket = Ticket::where('id', $id)->first();
@@ -140,14 +144,14 @@ class TicketService
       $ticket,
       'You are not authorized to update this ticket'
     );
-
-    $ticket = DB::transaction(function () use ($ticket, $data) {
+    $log = null;
+    $ticket = DB::transaction(function () use ($ticket, $data, &$log) {
       $oldStatus = $ticket->status;
       $oldStaffId = $ticket->staff_id;
       $ticket->update($data);
 
       if (isset($data['status']) && $data['status'] !== $oldStatus) {
-        $this->handleTicketStatusChange($ticket, $data['status']);
+        $log = $this->handleTicketStatusChange($ticket, $data['status']);
         if ($data['status'] == TicketStatus::COMPLETE->value) {
           NotifyTicketHasBeenCompleted::dispatch($ticket);
         }
@@ -158,12 +162,16 @@ class TicketService
           $data['staff_id'],
           'You cannot assign to yourself'
         );
-        $this->handleTicketStatusChange($ticket, TicketStatus::ASSIGNED->value);
+        $log = $this->handleTicketStatusChange($ticket, TicketStatus::ASSIGNED->value);
         NotifyStaffHasBeenAssigned::dispatch($ticket);
       }
 
       return $ticket;
     });
+    event(new TicketUpdated($ticket));
+    if ($log) {
+      event(new Auditlogged($log));
+    }
 
     return $ticket->fresh();
   }
@@ -246,25 +254,26 @@ class TicketService
     Ticket $ticket,
     string $newStatus,
     string $action = AuditActions::STATUS_CHANGED->value
-  ): void {
+  ): TicketAuditLog {
     $latestAuditLog = $ticket->logs()
       ->whereNull('end_at')
       ->orderBy('created_at', 'asc')
       ->first();
-
+    $log = null;
     if ($latestAuditLog) {
       $latestAuditLog->update([
         'action' => $action,
         'end_at' => now(),
         'to_status' => $newStatus,
       ]);
+      $log = $latestAuditLog;
     }
 
     if ($newStatus == TicketStatus::COMPLETE->value || $newStatus == TicketStatus::FORCE_CLOSED->value) {
-      return;
+      return $log;
     }
 
-    TicketAuditLog::create([
+    $log = TicketAuditLog::create([
       'ticket_id' => $ticket->id,
       'action' => AuditActions::PENDING->value,
       'status' => $newStatus,
@@ -274,5 +283,7 @@ class TicketService
       'start_at' => now(),
       'end_at' => null,
     ]);
+
+    return $log;
   }
 }
