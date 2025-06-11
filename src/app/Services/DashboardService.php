@@ -69,10 +69,10 @@ class DashboardService
   private function getStartDateFromRange(string $range): Carbon
   {
     return match ($range) {
-      'today' => Carbon::today(),
+      'last_24_hours' => Carbon::now()->subHours(24)->startOfDay(),
       'last_7_days' => Carbon::now()->subDays(6)->startOfDay(),
-      'last_month' => Carbon::now()->subMonth()->startOfMonth(),
-      'this_month' => Carbon::now()->startOfMonth(),
+      'last_30_days' => Carbon::now()->subDays(29)->startOfDay(),
+      'last_90_days' => Carbon::now()->subDays(89)->startOfDay(),
       default => Carbon::now()->subDays(6)->startOfDay(),
     };
   }
