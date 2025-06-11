@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Constants\PaginateConstant;
 use App\Constants\UserRoles;
 use App\Events\CommentCreated;
+use App\Events\CommentDeleted;
 use App\Events\CommentUpdated;
 use App\Models\Attachment;
 use App\Models\Ticket;
@@ -116,6 +117,7 @@ class CommentService
       );
     }
 
+    event(new CommentDeleted($comment));
     $comment->delete();
     return true;
   }
