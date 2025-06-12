@@ -22,6 +22,7 @@ use Symfony\Component\HttpFoundation\Response;
 use App\Jobs\NotifyStaffHasBeenAssigned;
 use App\Jobs\NotifyTicketHasBeenCompleted;
 use App\Mail\ClientTicketCompleted;
+use App\Models\User;
 
 class TicketService
 {
@@ -108,9 +109,13 @@ class TicketService
       'name' => explode('@', $data['client_email'])[0],
       'email' => $data['client_email']
     ]);
+    $user = Auth::user();
+    if (!$user) {
+      $user = User::where('email', env('ADMIN_EMAIL'))->first();
+    }
     $data['client_id'] = $client->id;
     $data['status'] = TicketStatus::NEW->value;
-    $data['holder_id'] = Auth::user()->id;
+    $data['holder_id'] = $user->id;
     $ticket = DB::transaction(function () use ($data) {
       $ticket = Ticket::create($data);
 

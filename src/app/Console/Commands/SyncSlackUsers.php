@@ -31,12 +31,9 @@ class SyncSlackUsers extends Command
             $user = User::where('email', $slackUser['profile']['email'])->first();
             if ($user) {
                 if (!$user->trashed() && $isDeletedFromSource) {
-                    // Soft delete the user
                     $user->delete();
                 } elseif ($user->trashed() && $isDeletedFromSource) {
-                    // Do nothing — already deleted
                 } elseif (!$isDeletedFromSource) {
-                    // Update user (restore if soft-deleted first)
                     if ($user->trashed()) {
                         $user->restore();
                     }

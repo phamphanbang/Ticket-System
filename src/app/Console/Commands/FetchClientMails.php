@@ -55,8 +55,6 @@ class FetchClientMails extends Command
 
         foreach ($messages as $message) {
             $message->setFlag('Seen');
-            // $check = $this->ticketMailService->findByMessageId($message->getMessageId());
-            // if ($check) continue;
             $data = $this->mailHelper->processIMAPEmail($message);
 
             if (!$data['in_reply_to'] && !str_contains($data['subject'], '[ESReport]')) {
@@ -86,24 +84,6 @@ class FetchClientMails extends Command
                 Log::info('fetch ticket ' . $ticket->subject);
                 continue;
             }
-
-            // preg_match('/Ticket#\[(.*?)\]/', $data['subject'], $matches);
-
-            // $ticketId = $matches[1] ?? null;
-            // $ticket = $this->ticketService->getTicketById($ticketId);
-            // if (!$ticket) continue;
-            // $mail = $this->ticketMailService->createTicketMail([
-            //     ...$data,
-            //     'ticket_id' => $ticket->id,
-            // ]);
-            // $comment = $this->commentService->createComment([
-            //     'ticket_id' => $ticket->id,
-            //     'user_id' => $ticket_client->id,
-            //     'user_type' => ModelsClient::class,
-            //     'mail_id' => $mail->id,
-            //     'body' => $data['body'],
-            // ]);
-
             $message->setFlag('Seen');
         }
 
