@@ -24,6 +24,7 @@ Route::middleware(['auth'])->group(function () {
   Route::apiResource('users', UserController::class);
   Route::apiResource('tickets', TicketController::class);
   Route::get('tickets/{id}/attachments', [AttachmentController::class, 'getTicketAttachments']);
+  Route::post('tickets/{id}/attachments', [AttachmentController::class, 'uploadAttachment']);
   Route::prefix('tickets')->group(function () {
     Route::get('/{id}/logs', [TicketController::class, 'getLogs']);
     Route::get('/{id}/comments', [CommentController::class, 'index']);

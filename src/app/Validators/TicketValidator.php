@@ -64,6 +64,19 @@ class TicketValidator
     }
   }
 
+  public static function checkTicketIsComplete($ticket,$status, $message)
+  {
+    if (
+      $ticket->status == TicketStatus::COMPLETE->value &&
+      $status !== TicketStatus::ARCHIVED->value
+    ) {
+      throw new Exception(
+        $message,
+        Response::HTTP_FORBIDDEN
+      );
+    }
+  }
+
   public static function checkTicketIsReadyForArchived($ticket, $status,$message)
   {
     if (

@@ -151,15 +151,16 @@ class DashboardService
       ->whereNotNull('updated_at')
       ->where('created_at', '>=', $startDate)
       ->get()
-      ->map(fn($ticket) => Carbon::parse($ticket->updated_at)->diffInSeconds(Carbon::parse($ticket->created_at)))
+      ->map(fn($ticket) => Carbon::parse($ticket->updated_at)->diffInSeconds(Carbon::parse($ticket->created_at),true))
       ->filter()
       ->toArray();
-
-    $avg = count($durations) > 0 ? array_sum($durations) / count($durations) : 0;
+    $total = array_sum($durations);
+    $avg = count($durations) > 0 ? $total / count($durations) : 0;
 
     return [
       'avg_seconds' => round($avg),
       'avg_hms' => gmdate('H:i:s', (int) $avg),
+      'total' => gmdate('H:i:s', (int) $total),
     ];
   }
 
@@ -173,15 +174,16 @@ class DashboardService
       ->where('logs.start_at', '>=', $startDate)
       ->get()
       ->map(fn($row) => Carbon::parse($row->end_at)
-      ->diffInSeconds(Carbon::parse($row->start_at)))
+      ->diffInSeconds(Carbon::parse($row->start_at),true))
       ->filter()
       ->toArray();
-
-    $avg = count($durations) > 0 ? array_sum($durations) / count($durations) : 0;
+    $total = array_sum($durations);
+    $avg = count($durations) > 0 ? $total / count($durations) : 0;
 
     return [
       'avg_seconds' => round($avg),
       'avg_hms' => gmdate('H:i:s', (int) $avg),
+      'total' => gmdate('H:i:s', (int) $total),
     ];
   }
 
@@ -192,15 +194,16 @@ class DashboardService
       ->whereNotNull('updated_at')
       ->where('created_at', '>=', $startDate)
       ->get()
-      ->map(fn($ticket) => Carbon::parse($ticket->updated_at)->diffInSeconds(Carbon::parse($ticket->created_at)))
+      ->map(fn($ticket) => Carbon::parse($ticket->updated_at)->diffInSeconds(Carbon::parse($ticket->created_at),true))
       ->filter()
       ->toArray();
-
-    $avg = count($durations) > 0 ? array_sum($durations) / count($durations) : 0;
+    $total = array_sum($durations);
+    $avg = count($durations) > 0 ? $total / count($durations) : 0;
 
     return [
       'avg_seconds' => round($avg),
       'avg_hms' => gmdate('H:i:s', (int) $avg),
+      'total' => gmdate('H:i:s', (int) $total),
     ];
   }
 }

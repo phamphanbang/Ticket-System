@@ -155,11 +155,19 @@ class TicketService
       $ticket,
       'This ticket is closed to edit'
     );
-    TicketValidator::checkTicketIsReadyForArchived(
-      $ticket,
-      $data['status'],
-      'This ticket is not ready to archived'
-    );
+    
+    if(isset($data['status'])) {
+      TicketValidator::checkTicketIsComplete(
+        $ticket,
+        $data['status'],
+        'This ticket can only be archived'
+      );
+      TicketValidator::checkTicketIsReadyForArchived(
+        $ticket,
+        $data['status'],
+        'This ticket is not ready to archived'
+      );
+    }
     TicketValidator::checkTicketBelongsToHolderOrStaff(
       $ticket,
       'You are not authorized to update this ticket'
@@ -228,15 +236,16 @@ class TicketService
       ->orderBy('created_at', 'desc');
     if ($user->role == UserRoles::ADMIN->value) {
       $query->withTrashed();
-    } else {
-      $query->where(function ($query) use ($user) {
-        $query->where(function ($q) use ($user) {
-          $q->where('staff_id', $user->id)
-            ->orWhere('holder_id', $user->id);
-        });
-        $query->whereNull('deleted_at');
-      });
-    }
+    } 
+    // else {
+    //   $query->where(function ($query) use ($user) {
+    //     $query->where(function ($q) use ($user) {
+    //       $q->where('staff_id', $user->id)
+    //         ->orWhere('holder_id', $user->id);
+    //     });
+    //     $query->whereNull('deleted_at');
+    //   });
+    // }
     $perPage = $filters['limit'] ?? PaginateConstant::DEFAULT_PER_PAGE->value;
     $page = $filters['page'] ?? PaginateConstant::DEFAULT_PAGE->value;
 
