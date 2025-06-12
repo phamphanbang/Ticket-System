@@ -19,7 +19,7 @@ class AttachmentService
   public function __construct(
   ) {}
 
-  public function saveAttachment(UploadedFile $file, string $comment_id, string $ticket_id)
+  public function saveAttachment(UploadedFile $file, $comment_id, $ticket_id)
   {
     $fileName = $file->getClientOriginalName();
     $fileExtension = $file->getClientOriginalExtension();
@@ -36,8 +36,26 @@ class AttachmentService
       'file_size' => $fileSize,
       'content_type' => $contentType
     ]);
-    event(new AttachmentCreated($attachment));
     return $attachment;
+  }
+
+  public function uploadAttachment(array $data, string $ticketId)
+  {
+    $ticket = Ticket::where('id', $ticketId)->first();
+    TicketValidator::checkTicketExists($ticket);
+    TicketValidator::checkAuthorization($ticket);
+
+    $attachments = [];
+    DB::transaction(function () use ($data, $ticket, &$attachments) {
+
+      if (!empty($data['attachments'])) {
+        foreach ($data['attachments'] as $file) {
+          $attachments[] = $this->saveAttachment($file, null, $ticket->id);
+        }
+      }
+    });
+    event(new AttachmentCreated($attachments, $ticket));
+    return true;
   }
 
   public function deleteAttachment(string $attachmentId): bool

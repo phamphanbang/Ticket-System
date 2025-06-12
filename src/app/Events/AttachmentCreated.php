@@ -22,7 +22,7 @@ class AttachmentCreated implements ShouldBroadcast, ShouldDispatchAfterCommit
   /**
    * Create a new event instance.
    */
-  public function __construct(public Attachment $attachment)
+  public function __construct(public array $attachments, public Ticket $ticket)
   {
     //
   }
@@ -35,7 +35,7 @@ class AttachmentCreated implements ShouldBroadcast, ShouldDispatchAfterCommit
   public function broadcastOn(): array
   {
     return [
-      new Channel('tickets.' . $this->attachment->ticket_id . '.attachments'),
+      new Channel('tickets.' . $this->ticket->id . '.attachments'),
     ];
   }
 
@@ -46,17 +46,19 @@ class AttachmentCreated implements ShouldBroadcast, ShouldDispatchAfterCommit
 
   public function broadcastWith()
   {
-    return [
-      'id' => $this->attachment->id,
-      'ticket_id' => $this->attachment->ticket_id,
-      'comment_id' => $this->attachment->comment_id,
-      'file_path' => $this->attachment->file_path,
-      'file_name' => $this->attachment->file_name,
-      'file_size' => $this->attachment->file_size,
-      'file_extension' => $this->attachment->file_extension,
-      'content_type' => $this->attachment->content_type,
-      'created_at' => $this->attachment->created_at->format('Y-m-d H:i:s'),
-      'updated_at' => $this->attachment->updated_at->format('Y-m-d H:i:s'),
-    ];
+    return collect($this->attachments)->map(function ($attachment) {
+      return [
+        'id' => $attachment->id,
+        'ticket_id' => $attachment->ticket_id,
+        'comment_id' => $attachment->comment_id,
+        'file_path' => $attachment->file_path,
+        'file_name' => $attachment->file_name,
+        'file_size' => $attachment->file_size,
+        'file_extension' => $attachment->file_extension,
+        'content_type' => $attachment->content_type,
+        'created_at' => $attachment->created_at->format('Y-m-d H:i:s'),
+        'updated_at' => $attachment->updated_at->format('Y-m-d H:i:s'),
+      ];
+    });
   }
 }

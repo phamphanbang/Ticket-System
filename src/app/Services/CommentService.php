@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Constants\PaginateConstant;
 use App\Constants\UserRoles;
+use App\Events\AttachmentCreated;
 use App\Events\CommentCreated;
 use App\Events\CommentDeleted;
 use App\Events\CommentUpdated;
@@ -65,18 +66,21 @@ class CommentService
     $ticket = Ticket::where('id', $ticketId)->first();
     TicketValidator::checkTicketExists($ticket);
     TicketValidator::checkAuthorization($ticket);
-
-    $comment = DB::transaction(function () use ($data, $ticket) {
+    $attachments = [];
+    $comment = DB::transaction(function () use ($data, $ticket, &$attachments) {
       $comment = TicketComment::create($data);
 
       if (!empty($data['attachments'])) {
         foreach ($data['attachments'] as $file) {
-          $this->attachmentService->saveAttachment($file, $comment->id, $ticket->id);
+          $attachments[] = $this->attachmentService->saveAttachment($file, $comment->id, $ticket->id);
         }
       }
 
       return $comment;
     });
+    if (!empty($attachments)) {
+      event(new AttachmentCreated($attachments, $ticket));
+    }
     event(new CommentCreated($comment));
     return $comment;
   }
@@ -91,17 +95,21 @@ class CommentService
         Response::HTTP_FORBIDDEN
       );
     }
-    $comment = DB::transaction(function () use ($comment, $data) {
+    $attachments = [];
+    $comment = DB::transaction(function () use ($comment, $data, &$attachments) {
       $comment->update($data);
 
       if (!empty($data['attachments'])) {
         foreach ($data['attachments'] as $file) {
-          $this->attachmentService->saveAttachment($file, $comment->id, $comment->ticket->id);
+          $attachments[] = $this->attachmentService->saveAttachment($file, $comment->id, $comment->ticket->id);
         }
       }
 
       return $comment;
     });
+    if (!empty($attachments)) {
+      event(new AttachmentCreated($attachments, $comment->ticket));
+    }
     event(new CommentUpdated($comment));
     return $comment->fresh();
   }
