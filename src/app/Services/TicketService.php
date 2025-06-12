@@ -39,6 +39,7 @@ class TicketService
   {
     $query = Ticket::query()->with(['client', 'holder', 'staff']);
     $user = Auth::user();
+
     if (isset($filters['search'])) {
       $query->where(function ($q) use ($filters) {
         $q->where('title', 'like', "%{$filters['search']}%")
@@ -48,6 +49,13 @@ class TicketService
               ->orWhere('email', 'like', "%{$filters['search']}%");
           });
       });
+    }
+
+    if(isset($filters["status"])) {
+      $query->where('status', $filters['status']);
+      if($filters['status'] !== TicketStatus::ARCHIVED->value) {
+        $query->where('status', '!=', TicketStatus::ARCHIVED->value);
+      }
     }
 
     if ($user->role == UserRoles::ADMIN->value) {
@@ -143,9 +151,14 @@ class TicketService
     $ticket = Ticket::where('id', $id)->first();
 
     TicketValidator::checkTicketExists($ticket);
-    TicketValidator::checkTicketIsCompleteOrClose(
+    TicketValidator::checkTicketIsArchived(
       $ticket,
       'This ticket is closed to edit'
+    );
+    TicketValidator::checkTicketIsReadyForArchived(
+      $ticket,
+      $data['status'],
+      'This ticket is not ready to archived'
     );
     TicketValidator::checkTicketBelongsToHolderOrStaff(
       $ticket,

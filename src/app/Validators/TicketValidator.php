@@ -22,7 +22,7 @@ class TicketValidator
   public static function checkTicketBelongsToHolderOrStaff($ticket, $message)
   {
     $user = Auth::user();
-    if ($ticket->holder_id !== $user->id && $ticket->staff_id !== $user->id) {
+    if ($ticket->holder_id !== $user->id && $ticket->staff_id !== $user->id && $user->role !== UserRoles::ADMIN->value) {
       throw new Exception(
         $message,
         Response::HTTP_FORBIDDEN
@@ -52,11 +52,23 @@ class TicketValidator
     }
   }
 
-  public static function checkTicketIsCompleteOrClose($ticket, $message)
+  public static function checkTicketIsArchived($ticket, $message)
   {
     if (
-      $ticket->status == TicketStatus::COMPLETE->value ||
       $ticket->status == TicketStatus::ARCHIVED->value
+    ) {
+      throw new Exception(
+        $message,
+        Response::HTTP_FORBIDDEN
+      );
+    }
+  }
+
+  public static function checkTicketIsReadyForArchived($ticket, $status,$message)
+  {
+    if (
+      $ticket->status !== TicketStatus::COMPLETE->value &&
+      $status === TicketStatus::ARCHIVED->value
     ) {
       throw new Exception(
         $message,
