@@ -79,7 +79,7 @@ class CommentService
       return $comment;
     });
     if (!empty($attachments)) {
-      event(new AttachmentCreated($attachments, $ticket));
+      event(new AttachmentCreated(collect($attachments), $ticket));
     }
     event(new CommentCreated($comment));
     return $comment;
@@ -108,7 +108,7 @@ class CommentService
       return $comment;
     });
     if (!empty($attachments)) {
-      event(new AttachmentCreated($attachments, $comment->ticket));
+      event(new AttachmentCreated(collect($attachments), $comment->ticket));
     }
     event(new CommentUpdated($comment));
     return $comment->fresh();
