@@ -15,6 +15,7 @@ class Attachment extends Model
     protected $fillable = [
         'ticket_id',
         'comment_id',
+        'email_id',
         'file_path',
         'file_name',
         'file_size',

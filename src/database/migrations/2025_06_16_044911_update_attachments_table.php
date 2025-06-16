@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table("attachments", function (Blueprint $table) {
-            $table->foreignUuid('email_id')->nullable()->references('id')->on('received_emails')->cascadeOnDelete();
+            $table->foreignUuid('email_id')->nullable()->references('id')->on('ticket_emails')->cascadeOnDelete();
         });
     }
 

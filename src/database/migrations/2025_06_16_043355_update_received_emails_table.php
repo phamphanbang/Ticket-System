@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::drop("received_emails");
-        Schema::create("received_emails", function (Blueprint $table) {
+        Schema::create("ticket_emails", function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->foreignUuid('ticket_id')->nullable()->constrained()->nullOnDelete();
             $table->string('message_id')->nullable();

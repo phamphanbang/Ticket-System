@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class ReceivedEmail extends Model
+class TicketEmail extends Model
 {
     use HasUuids;
 
@@ -18,12 +18,12 @@ class ReceivedEmail extends Model
     protected $fillable = [
         'message_id',
         'in_reply_to',
+        'references',
         'ticket_id',
         'from_email',
         'to_email',
         'subject',
         'body',
-        'attachments',
         'type',
         'status',
         'received_at',
@@ -53,6 +53,11 @@ class ReceivedEmail extends Model
 
     public function ticket()
     {
-        return $this->belongsTo(Ticket::class);
+        return $this->belongsTo(Ticket::class,'ticket_id');
+    }
+
+    public function attachments()
+    {
+        return $this->hasMany(Attachment::class,'email_id');
     }
 } 
