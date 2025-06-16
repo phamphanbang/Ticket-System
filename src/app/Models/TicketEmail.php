@@ -35,7 +35,6 @@ class TicketEmail extends Model
      * @var array<string, string>
      */
     protected $casts = [
-        'attachments' => 'json',
         'received_at' => 'datetime',
     ];
 

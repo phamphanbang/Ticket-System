@@ -22,6 +22,7 @@ return new class extends Migration
             $table->string('to_email');
             $table->string('subject');
             $table->longText('body');
+            $table->string('type')->default('received');
             $table->timestamp('received_at');
             $table->timestamps();
         });

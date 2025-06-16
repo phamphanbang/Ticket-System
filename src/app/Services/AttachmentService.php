@@ -19,7 +19,7 @@ class AttachmentService
   public function __construct(
   ) {}
 
-  public function saveAttachment(UploadedFile $file, $comment_id, $ticket_id)
+  public function saveAttachment(UploadedFile $file, $comment_id, $ticket_id,$email_id = null)
   {
     $fileName = $file->getClientOriginalName();
     $fileExtension = $file->getClientOriginalExtension();
@@ -30,6 +30,7 @@ class AttachmentService
     $attachment = Attachment::create([
       'ticket_id' => $ticket_id,
       'comment_id' => $comment_id,
+      'email_id' => $email_id,
       'file_name' => $fileName,
       'file_extension' => $fileExtension,
       'file_path' => $filePath,

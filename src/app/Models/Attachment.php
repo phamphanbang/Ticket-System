@@ -33,5 +33,9 @@ class Attachment extends Model
         return $this->belongsTo(Ticket::class ,'ticket_id');
     }
     
+    public function email()
+    {
+        return $this->belongsTo(TicketEmail::class ,'email_id');
+    }
     
 }

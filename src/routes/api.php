@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CommentController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\MailController;
 use App\Http\Controllers\SlackWebhookController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\UserController;
@@ -25,6 +26,10 @@ Route::middleware(['auth'])->group(function () {
   Route::apiResource('tickets', TicketController::class);
   Route::get('tickets/{id}/attachments', [AttachmentController::class, 'getTicketAttachments']);
   Route::post('tickets/{id}/attachments', [AttachmentController::class, 'uploadAttachment']);
+
+  Route::get('tickets/{id}/mails', [MailController::class, 'index']);
+  Route::post('tickets/{id}/mails', [MailController::class, 'store']);
+
   Route::prefix('tickets')->group(function () {
     Route::get('/{id}/logs', [TicketController::class, 'getLogs']);
     Route::get('/{id}/comments', [CommentController::class, 'index']);
