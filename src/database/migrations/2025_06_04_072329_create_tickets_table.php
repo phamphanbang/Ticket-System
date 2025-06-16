@@ -18,7 +18,6 @@ return new class extends Migration
             $table->string('status');
             $table->string('title');
             $table->text('description');
-            $table->foreignUuid('mail_created_id')->nullable()->constrained('received_emails');
             $table->foreignUuid('holder_id')->nullable()->constrained('users');
             $table->foreignUuid('staff_id')->nullable()->constrained('users');
             $table->timestamps();
