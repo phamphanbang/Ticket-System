@@ -21,8 +21,8 @@ class TicketValidator
 
   public static function checkTicketBelongsToHolderOrStaff($ticket, $message)
   {
-    $user = auth()->user();
-    if ($ticket->holder_id !== $user->id && $ticket->staff_id !== $user->id) {
+    $user = Auth::user();
+    if ($ticket->holder_id !== $user->id && $ticket->staff_id !== $user->id && $user->role !== UserRoles::ADMIN->value) {
       throw new Exception(
         $message,
         Response::HTTP_FORBIDDEN
@@ -32,7 +32,7 @@ class TicketValidator
 
   public static function checkTicketBelongsToHolder($ticket, $message)
   {
-    $user = auth()->user();
+    $user = Auth::user();
     if ($ticket->holder_id !== $user->id) {
       throw new Exception(
         $message,
@@ -43,7 +43,7 @@ class TicketValidator
 
   public static function checkUserAssignToThemselves($staffId, $message)
   {
-    $user = auth()->user();
+    $user = Auth::user();
     if ($user->id == $staffId) {
       throw new Exception(
         $message,
@@ -52,11 +52,36 @@ class TicketValidator
     }
   }
 
-  public static function checkTicketIsCompleteOrClose($ticket, $message)
+  public static function checkTicketIsArchived($ticket, $message)
   {
     if (
-      $ticket->status == TicketStatus::COMPLETE->value ||
-      $ticket->status == TicketStatus::FORCE_CLOSED->value
+      $ticket->status == TicketStatus::ARCHIVED->value
+    ) {
+      throw new Exception(
+        $message,
+        Response::HTTP_FORBIDDEN
+      );
+    }
+  }
+
+  public static function checkTicketIsComplete($ticket,$status, $message)
+  {
+    if (
+      $ticket->status == TicketStatus::COMPLETE->value &&
+      $status !== TicketStatus::ARCHIVED->value
+    ) {
+      throw new Exception(
+        $message,
+        Response::HTTP_FORBIDDEN
+      );
+    }
+  }
+
+  public static function checkTicketIsReadyForArchived($ticket, $status,$message)
+  {
+    if (
+      $ticket->status !== TicketStatus::COMPLETE->value &&
+      $status === TicketStatus::ARCHIVED->value
     ) {
       throw new Exception(
         $message,
@@ -69,7 +94,7 @@ class TicketValidator
   {
     if (
       $ticket->status !== TicketStatus::COMPLETE->value ||
-      $ticket->status !== TicketStatus::FORCE_CLOSED->value
+      $ticket->status !== TicketStatus::ARCHIVED->value
     ) {
       throw new Exception(
         $message,

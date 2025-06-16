@@ -4,6 +4,7 @@ use App\Http\Controllers\AttachmentController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CommentController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\SlackWebhookController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\UserController;
@@ -15,9 +16,15 @@ Route::post('slack/user', [SlackWebhookController::class, 'handle']);
 
 Route::middleware(['auth'])->group(function () {
   Route::get('auth/me', [AuthController::class, 'me']);
+  // Route::get('dashboard', [DashboardController::class, 'index']);
+  Route::get('dashboard/summary', [DashboardController::class, 'summary']);
+  Route::get('dashboard/user-stats', [DashboardController::class, 'statsUserGroupedByDate']);
+  Route::get('dashboard/admin-stats', [DashboardController::class, 'statsAdminGroupedByDate']);
+
   Route::apiResource('users', UserController::class);
   Route::apiResource('tickets', TicketController::class);
   Route::get('tickets/{id}/attachments', [AttachmentController::class, 'getTicketAttachments']);
+  Route::post('tickets/{id}/attachments', [AttachmentController::class, 'uploadAttachment']);
   Route::prefix('tickets')->group(function () {
     Route::get('/{id}/logs', [TicketController::class, 'getLogs']);
     Route::get('/{id}/comments', [CommentController::class, 'index']);

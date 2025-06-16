@@ -7,10 +7,10 @@ enum TicketStatus :string
     
     case NEW = 'new';
     case IN_PROGRESS = 'in_progress';
-    case WAITING = 'waiting';
+    case PENDING = 'pending';
     case ASSIGNED = 'assigned';
     case COMPLETE = 'complete';
-    case FORCE_CLOSED = 'force_closed';
+    case ARCHIVED = 'archived';
 
     case DELETED = 'deleted';
 
@@ -19,10 +19,10 @@ enum TicketStatus :string
         return match ($this) {
             self::NEW => 'New',
             self::IN_PROGRESS => 'In Progress',
-            self::WAITING => 'Waiting',
+            self::PENDING => 'Pending',
             self::ASSIGNED => 'Assigned',
             self::COMPLETE => 'Complete',
-            self::FORCE_CLOSED => 'Force Closed',
+            self::ARCHIVED => 'Archived',
         };
     }
 
@@ -31,10 +31,10 @@ enum TicketStatus :string
         return [
             self::NEW->value,
             self::IN_PROGRESS->value,
-            self::WAITING->value,
+            self::PENDING->value,
             self::ASSIGNED->value,
             self::COMPLETE->value,
-            self::FORCE_CLOSED->value,
+            self::ARCHIVED->value,
         ];
     }
 

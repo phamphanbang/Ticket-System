@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\PostAttachmentRequest;
 use App\Services\AttachmentService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\Request;
@@ -29,6 +30,16 @@ class AttachmentController extends Controller
     $this->attachmentService->deleteAttachment($attachmentId);
     return $this->success(
       __('messages.model_deleted', ['model' => 'Attachment'])
+    );
+  }
+
+  public function uploadAttachment(PostAttachmentRequest $request, string $ticketId)
+  {
+    $validated = $request->validated();
+    $attachment = $this->attachmentService->uploadAttachment($validated, $ticketId);
+    return $this->success(
+      $attachment,
+      'Attachment uploaded successfully'
     );
   }
 

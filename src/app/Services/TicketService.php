@@ -6,6 +6,9 @@ use App\Constants\AuditActions;
 use App\Constants\PaginateConstant;
 use App\Constants\TicketStatus;
 use App\Constants\UserRoles;
+use App\Events\AuditLogDeleted;
+use App\Events\AuditLogged;
+use App\Events\TicketUpdated;
 use App\Mail\ClientTicketCreated;
 use App\Models\Ticket;
 use App\Models\TicketAuditLog;
@@ -18,6 +21,8 @@ use Illuminate\Support\Facades\Mail;
 use Symfony\Component\HttpFoundation\Response;
 use App\Jobs\NotifyStaffHasBeenAssigned;
 use App\Jobs\NotifyTicketHasBeenCompleted;
+use App\Mail\ClientTicketCompleted;
+use App\Models\User;
 
 class TicketService
 {
@@ -33,7 +38,8 @@ class TicketService
   public function index(array $filters = []): array
   {
     $query = Ticket::query()->with(['client', 'holder', 'staff']);
-    $user = auth()->user();
+    $user = Auth::user();
+
     if (isset($filters['search'])) {
       $query->where(function ($q) use ($filters) {
         $q->where('title', 'like', "%{$filters['search']}%")
@@ -43,6 +49,13 @@ class TicketService
               ->orWhere('email', 'like', "%{$filters['search']}%");
           });
       });
+    }
+
+    if(isset($filters["status"])) {
+      $query->where('status', $filters['status']);
+      if($filters['status'] !== TicketStatus::ARCHIVED->value) {
+        $query->where('status', '!=', TicketStatus::ARCHIVED->value);
+      }
     }
 
     if ($user->role == UserRoles::ADMIN->value) {
@@ -88,6 +101,8 @@ class TicketService
     ];
   }
 
+
+
   public function show(string $id): Ticket
   {
     $ticket = Ticket::where('id', $id)->first();
@@ -102,9 +117,13 @@ class TicketService
       'name' => explode('@', $data['client_email'])[0],
       'email' => $data['client_email']
     ]);
+    $user = Auth::user();
+    if (!$user) {
+      $user = User::where('email', env('ADMIN_EMAIL'))->first();
+    }
     $data['client_id'] = $client->id;
     $data['status'] = TicketStatus::NEW->value;
-    $data['holder_id'] = auth()->user()->id;
+    $data['holder_id'] = $user->id;
     $ticket = DB::transaction(function () use ($data) {
       $ticket = Ticket::create($data);
 
@@ -132,24 +151,39 @@ class TicketService
     $ticket = Ticket::where('id', $id)->first();
 
     TicketValidator::checkTicketExists($ticket);
-    TicketValidator::checkTicketIsCompleteOrClose(
+    TicketValidator::checkTicketIsArchived(
       $ticket,
       'This ticket is closed to edit'
     );
+    
+    if(isset($data['status'])) {
+      TicketValidator::checkTicketIsComplete(
+        $ticket,
+        $data['status'],
+        'This ticket can only be archived'
+      );
+      TicketValidator::checkTicketIsReadyForArchived(
+        $ticket,
+        $data['status'],
+        'This ticket is not ready to archived'
+      );
+    }
     TicketValidator::checkTicketBelongsToHolderOrStaff(
       $ticket,
       'You are not authorized to update this ticket'
     );
-
-    $ticket = DB::transaction(function () use ($ticket, $data) {
+    $log = null;
+    $ticket = DB::transaction(function () use ($ticket, $data, &$log) {
       $oldStatus = $ticket->status;
       $oldStaffId = $ticket->staff_id;
       $ticket->update($data);
 
       if (isset($data['status']) && $data['status'] !== $oldStatus) {
-        $this->handleTicketStatusChange($ticket, $data['status']);
+        $log = $this->handleTicketStatusChange($ticket, $data['status']);
         if ($data['status'] == TicketStatus::COMPLETE->value) {
           NotifyTicketHasBeenCompleted::dispatch($ticket);
+          Mail::to($ticket->client->email)
+            ->queue(new ClientTicketCompleted($ticket));
         }
       }
 
@@ -158,12 +192,16 @@ class TicketService
           $data['staff_id'],
           'You cannot assign to yourself'
         );
-        $this->handleTicketStatusChange($ticket, TicketStatus::ASSIGNED->value);
+        $log = $this->handleTicketStatusChange($ticket, TicketStatus::ASSIGNED->value);
         NotifyStaffHasBeenAssigned::dispatch($ticket);
       }
 
       return $ticket;
     });
+    event(new TicketUpdated($ticket));
+    if ($log) {
+      event(new AuditLogged($log));
+    }
 
     return $ticket->fresh();
   }
@@ -176,10 +214,6 @@ class TicketService
       $ticket,
       'You are not authorized to delete this ticket'
     );
-    // TicketValidator::checkTicketCanBeDeleted(
-    //   $ticket,
-    //   'This ticket is not at right status to delete'
-    // );
 
     $ticket = DB::transaction(function () use ($ticket) {
       $ticket->delete();
@@ -202,15 +236,16 @@ class TicketService
       ->orderBy('created_at', 'desc');
     if ($user->role == UserRoles::ADMIN->value) {
       $query->withTrashed();
-    } else {
-      $query->where(function ($query) use ($user) {
-        $query->where(function ($q) use ($user) {
-          $q->where('staff_id', $user->id)
-            ->orWhere('holder_id', $user->id);
-        });
-        $query->whereNull('deleted_at');
-      });
-    }
+    } 
+    // else {
+    //   $query->where(function ($query) use ($user) {
+    //     $query->where(function ($q) use ($user) {
+    //       $q->where('staff_id', $user->id)
+    //         ->orWhere('holder_id', $user->id);
+    //     });
+    //     $query->whereNull('deleted_at');
+    //   });
+    // }
     $perPage = $filters['limit'] ?? PaginateConstant::DEFAULT_PER_PAGE->value;
     $page = $filters['page'] ?? PaginateConstant::DEFAULT_PAGE->value;
 
@@ -230,7 +265,7 @@ class TicketService
   {
     $log = TicketAuditLog::findOrFail($id);
 
-    $user = auth()->user();
+    $user = Auth::user();
 
     if ($user->role !== UserRoles::ADMIN->value && $user->id !== $log->holder_id) {
       throw new Exception(
@@ -238,7 +273,7 @@ class TicketService
         Response::HTTP_FORBIDDEN
       );
     }
-
+    event(new AuditLogDeleted($log));
     $log->delete();
   }
 
@@ -246,25 +281,26 @@ class TicketService
     Ticket $ticket,
     string $newStatus,
     string $action = AuditActions::STATUS_CHANGED->value
-  ): void {
+  ): TicketAuditLog {
     $latestAuditLog = $ticket->logs()
       ->whereNull('end_at')
       ->orderBy('created_at', 'asc')
       ->first();
-
+    $log = null;
     if ($latestAuditLog) {
       $latestAuditLog->update([
         'action' => $action,
         'end_at' => now(),
         'to_status' => $newStatus,
       ]);
+      $log = $latestAuditLog;
     }
 
-    if ($newStatus == TicketStatus::COMPLETE->value || $newStatus == TicketStatus::FORCE_CLOSED->value) {
-      return;
+    if ($newStatus == TicketStatus::COMPLETE->value || $newStatus == TicketStatus::ARCHIVED->value) {
+      return $log;
     }
 
-    TicketAuditLog::create([
+    $log = TicketAuditLog::create([
       'ticket_id' => $ticket->id,
       'action' => AuditActions::PENDING->value,
       'status' => $newStatus,
@@ -274,5 +310,7 @@ class TicketService
       'start_at' => now(),
       'end_at' => null,
     ]);
+
+    return $log;
   }
 }

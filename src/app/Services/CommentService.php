@@ -4,6 +4,10 @@ namespace App\Services;
 
 use App\Constants\PaginateConstant;
 use App\Constants\UserRoles;
+use App\Events\AttachmentCreated;
+use App\Events\CommentCreated;
+use App\Events\CommentDeleted;
+use App\Events\CommentUpdated;
 use App\Models\Attachment;
 use App\Models\Ticket;
 use App\Models\TicketComment;
@@ -31,6 +35,7 @@ class CommentService
     $perPage = $filters['limit'] ?? PaginateConstant::DEFAULT_PER_PAGE->value;
     $page = $filters['page'] ?? PaginateConstant::DEFAULT_PAGE->value;
 
+    $query->orderBy('created_at','desc');
     $paginator = $query->paginate($perPage, ['*'], 'page', $page);
 
     return [
@@ -61,43 +66,51 @@ class CommentService
     $ticket = Ticket::where('id', $ticketId)->first();
     TicketValidator::checkTicketExists($ticket);
     TicketValidator::checkAuthorization($ticket);
-
-    $comment = DB::transaction(function () use ($data, $ticket) {
+    $attachments = [];
+    $comment = DB::transaction(function () use ($data, $ticket, &$attachments) {
       $comment = TicketComment::create($data);
 
       if (!empty($data['attachments'])) {
         foreach ($data['attachments'] as $file) {
-          $this->attachmentService->saveAttachment($file, $comment->id, $ticket->id);
+          $attachments[] = $this->attachmentService->saveAttachment($file, $comment->id, $ticket->id);
         }
       }
 
       return $comment;
     });
+    if (!empty($attachments)) {
+      event(new AttachmentCreated(collect($attachments), $ticket));
+    }
+    event(new CommentCreated($comment));
     return $comment;
   }
 
   public function update(string $id, array $data): TicketComment
   {
     $comment = TicketComment::where('id', $id)->firstOrFail();
-
+    
     if ($comment->user_id !== auth()->id() && auth()->user()->role !== UserRoles::ADMIN->value) {
       throw new Exception(
         'You are not authorized to update this comment',
         Response::HTTP_FORBIDDEN
       );
     }
-    $comment = DB::transaction(function () use ($comment, $data) {
+    $attachments = [];
+    $comment = DB::transaction(function () use ($comment, $data, &$attachments) {
       $comment->update($data);
 
       if (!empty($data['attachments'])) {
         foreach ($data['attachments'] as $file) {
-          $this->attachmentService->saveAttachment($file, $comment->id, $comment->ticket->id);
+          $attachments[] = $this->attachmentService->saveAttachment($file, $comment->id, $comment->ticket->id);
         }
       }
 
       return $comment;
     });
-
+    if (!empty($attachments)) {
+      event(new AttachmentCreated(collect($attachments), $comment->ticket));
+    }
+    event(new CommentUpdated($comment));
     return $comment->fresh();
   }
 
@@ -112,6 +125,7 @@ class CommentService
       );
     }
 
+    event(new CommentDeleted($comment));
     $comment->delete();
     return true;
   }
