@@ -87,7 +87,7 @@ class CommentService
 
   public function update(string $id, array $data): TicketComment
   {
-    $comment = TicketComment::where('id', $id)->firstOrFail();
+    $comment = TicketComment::with('attachments','user')->where('id', $id)->firstOrFail();
     
     if ($comment->user_id !== auth()->id() && auth()->user()->role !== UserRoles::ADMIN->value) {
       throw new Exception(

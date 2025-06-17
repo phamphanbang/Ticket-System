@@ -50,9 +50,9 @@ class Ticket extends Model
         return $this->hasMany(TicketAuditLog::class);
     }
 
-    public function receivedEmails()
+    public function ticketEmails()
     {
-        return $this->hasMany(ReceivedEmail::class);
+        return $this->hasMany(TicketEmail::class);
     }
 
     public function holder()
@@ -67,7 +67,7 @@ class Ticket extends Model
 
     public function mailCreated()
     {
-        return $this->belongsTo(ReceivedEmail::class, 'mail_created_id');
+        return $this->belongsTo(TicketEmail::class, 'mail_created_id');
     }
 
     public function scopeWithStatus($query, $status)

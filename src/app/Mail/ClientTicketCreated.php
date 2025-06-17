@@ -3,12 +3,14 @@
 namespace App\Mail;
 
 use App\Models\Ticket;
+use App\Models\TicketEmail;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
+use Illuminate\Mail\Mailables\Headers;
 use Illuminate\Queue\SerializesModels;
 
 class ClientTicketCreated extends Mailable implements ShouldQueue
@@ -16,10 +18,12 @@ class ClientTicketCreated extends Mailable implements ShouldQueue
     use Queueable, SerializesModels;
 
     public Ticket $ticket;
+    public TicketEmail $ticketEmail;
 
-    public function __construct(Ticket $ticket)
+    public function __construct(Ticket $ticket, TicketEmail $ticketEmail)
     {
         $this->ticket = $ticket;
+        $this->ticketEmail = $ticketEmail;
     }
 
     public function envelope(): Envelope
@@ -29,8 +33,17 @@ class ClientTicketCreated extends Mailable implements ShouldQueue
                 address: config('mail.from.address'),
                 name: config('mail.from.name'),
             ),
-            subject: 'Your Ticket#['.$this->ticket->id.'] has been created',
+            subject: '[ESReport] '. $this->ticket->title,
         );
+    }
+
+    public function headers(): Headers
+    {
+      return new Headers(
+        text: [
+          'Ticket-Mail-Id' => $this->ticketEmail->id,
+        ],
+      );
     }
 
     public function content(): Content
