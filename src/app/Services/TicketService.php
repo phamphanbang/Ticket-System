@@ -155,7 +155,7 @@ class TicketService
       ]);
       Mail::to($ticket->client->email)
         ->queue(new ClientTicketCreated($ticket, $mail));
-      FetchInfoCommandJob::dispatch($mail->id);
+      FetchInfoCommandJob::dispatch($mail->id)->onQueue('high');
     }
 
     return $ticket;

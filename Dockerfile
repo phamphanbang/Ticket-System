@@ -2,6 +2,7 @@ FROM php:8.3-fpm
 
 RUN apt-get update && apt-get install -y \
     git curl zip unzip libonig-dev libxml2-dev libzip-dev libpng-dev cron procps \
+    openssl iputils-ping dnsutils telnet libnss3-tools \
     && docker-php-ext-install pdo_mysql zip
 
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer

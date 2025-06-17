@@ -11,8 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table("attachments", function (Blueprint $table) {
-            $table->foreignUuid('email_id')->nullable()->references('id')->on('ticket_emails')->cascadeOnDelete();
+        Schema::create('imap_sync_states', function (Blueprint $table) {
+            $table->id();
+            $table->string('folder'); // e.g., INBOX, Sent
+            $table->unsignedBigInteger('last_uid')->default(0);
+            $table->timestamps();
         });
     }
 
@@ -21,9 +24,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table("attachments", function (Blueprint $table) {
-            $table->dropForeign(['email_id']);
-            $table->dropColumn('email_id');
-        });
+        Schema::dropIfExists('imap_sync_states');
     }
 };

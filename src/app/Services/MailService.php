@@ -48,7 +48,7 @@ class MailService
 
     $mailable = new StaffResponse($mail, $attachments);
     Mail::to($ticket->client->email)->send($mailable);
-    FetchInfoCommandJob::dispatch($mail->id);
+    FetchInfoCommandJob::dispatch($mail->id)->onQueue('high');
     return $mail;
   }
 }
