@@ -119,7 +119,8 @@ class FetchClientMails extends Command
             'title' => $data['subject'],
             'description' => $data['body'],
         ];
-        $ticket = $this->ticketService->store($ticket_data);
+        $shouldSendEmail = false;
+        $ticket = $this->ticketService->store($ticket_data, $shouldSendEmail);
         $mail = $ticket->ticketEmails()->create([
             'message_id' => $data['message_id'],
             'in_reply_to' => $data['in_reply_to'],

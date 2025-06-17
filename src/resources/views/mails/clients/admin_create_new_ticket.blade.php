@@ -1,25 +1,12 @@
-@extends('mails.layout')
+<p>Support Ticket Acknowledgment</p>
 
-@section('title')
-<h2>Support Ticket Confirmation</h2>
-@endsection
+<p>Dear <strong>{{ $ticket->client->name }}</strong>,</p>
 
-@section('content')
-<h1>Hello {{ $ticket->client->name }},</h1>
+<p>Thank you for reaching out to <strong>{{ config('app.name') }} Support</strong>. This is to confirm that we have received your inquiry and a support ticket has been successfully created in our system.</p>
 
-<p>Thank you for contacting {{ config('app.name') }}. We’ve received your request and created a support ticket.</p>
+<p>Our support team is currently reviewing your request and will get back to you as soon as possible. If you have any additional information to share, please feel free to reply to this email. Your response will be automatically added to the ticket thread for our team to review.</p>
 
-<p>This email is to confirm that your ticket has been successfully submitted to our system. A member of our team will review it shortly.</p>
+<p>We appreciate your patience and will ensure your issue is addressed promptly.</p>
 
-<div class="ticket-details">
-    <p><strong>Ticket ID:</strong> {{ $ticket->id }}</p>
-    <p><strong>Subject:</strong> {{ $ticket->subject }}</p>
-    <p><strong>Created At:</strong> {{ $ticket->created_at->format('F j, Y, g:i a') }}</p>
-    @if(!empty($ticket->description))
-    <p><strong>Description:</strong><br>{{ $ticket->description }}</p>
-    @endif
-</div>
-
-<p>If you have any additional information to provide, simply reply to this email and your response will be added to the ticket thread automatically.</p>
-<p>Thank you again for reaching out to us.<br>The {{ config('app.name') }} Support Team</p>
-@endsection
+<p>Best regards,</p>
+<p><strong>The {{ config('app.name') }} Support Team</strong></p>

@@ -52,8 +52,14 @@ class FetchSentMails extends Command
         $IMAP_client = Client::account('default');
         $IMAP_client->connect();
 
-        $fetchTime = Carbon::now()->subHour();
-        $messages = $IMAP_client->getFolder('[Gmail]/Thư đã gửi')->messages()->since($fetchTime)->get();
+        $fetchTime = Carbon::now()->subMinutes(3);
+        $messages = $IMAP_client
+          ->getFolder('[Gmail]/Thư đã gửi')
+          ->messages()
+          ->setFetchFlags(false)
+          
+          ->since($fetchTime)
+          ->get();
         foreach ($messages as $message) {
           if(!array_key_exists("ticket_mail_id", $message->getAttributes())) {
             continue;
@@ -69,6 +75,7 @@ class FetchSentMails extends Command
             'in_reply_to' => $data['in_reply_to'],
             'references' => $data['references']
           ]);
+          break;
         }
 
         $IMAP_client->disconnect();

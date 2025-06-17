@@ -9,9 +9,11 @@ use App\Constants\UserRoles;
 use App\Events\AuditLogDeleted;
 use App\Events\AuditLogged;
 use App\Events\TicketUpdated;
+use App\Jobs\FetchInfoCommandJob;
 use App\Mail\ClientTicketCreated;
 use App\Models\Ticket;
 use App\Models\TicketAuditLog;
+use App\Models\TicketEmail;
 use App\Traits\HasAuditLog;
 use App\Validators\TicketValidator;
 use Exception;
@@ -23,6 +25,7 @@ use App\Jobs\NotifyStaffHasBeenAssigned;
 use App\Jobs\NotifyTicketHasBeenCompleted;
 use App\Mail\ClientTicketCompleted;
 use App\Models\User;
+use Illuminate\Support\Facades\View;
 
 class TicketService
 {
@@ -51,9 +54,9 @@ class TicketService
       });
     }
 
-    if(isset($filters["status"])) {
+    if (isset($filters["status"])) {
       $query->where('status', $filters['status']);
-      if($filters['status'] !== TicketStatus::ARCHIVED->value) {
+      if ($filters['status'] !== TicketStatus::ARCHIVED->value) {
         $query->where('status', '!=', TicketStatus::ARCHIVED->value);
       }
     }
@@ -111,7 +114,7 @@ class TicketService
     return $ticket->load(['client', 'staff', 'holder']);
   }
 
-  public function store(array $data)
+  public function store(array $data, bool $shouldSendEmail = true)
   {
     $client = $this->clientService->createClient([
       'name' => explode('@', $data['client_email'])[0],
@@ -140,8 +143,20 @@ class TicketService
 
       return $ticket->fresh();
     });
-    Mail::to($ticket->client->email)
-      ->queue(new ClientTicketCreated($ticket));
+    if ($shouldSendEmail) {
+      $mail = TicketEmail::create([
+        'from_email' => env('MAIL_FROM_ADDRESS'),
+        'to_email' => $ticket->client->email,
+        'body' => View::make('mails.clients.admin_create_new_ticket', ['ticket' => $ticket])->render(),
+        'subject' => '[ESReport] ' . $ticket->title,
+        'type' => 'reply',
+        'ticket_id' => $ticket->id,
+        'received_at' => now(),
+      ]);
+      Mail::to($ticket->client->email)
+        ->queue(new ClientTicketCreated($ticket, $mail));
+      FetchInfoCommandJob::dispatch($mail->id);
+    }
 
     return $ticket;
   }
@@ -155,8 +170,8 @@ class TicketService
       $ticket,
       'This ticket is closed to edit'
     );
-    
-    if(isset($data['status'])) {
+
+    if (isset($data['status'])) {
       TicketValidator::checkTicketIsComplete(
         $ticket,
         $data['status'],
@@ -236,7 +251,7 @@ class TicketService
       ->orderBy('created_at', 'desc');
     if ($user->role == UserRoles::ADMIN->value) {
       $query->withTrashed();
-    } 
+    }
     // else {
     //   $query->where(function ($query) use ($user) {
     //     $query->where(function ($q) use ($user) {
