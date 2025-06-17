@@ -12,6 +12,7 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Mail\Mailables\Headers;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Auth;
 use Symfony\Component\Mime\Email;
 
 class StaffResponse extends Mailable
@@ -21,6 +22,7 @@ class StaffResponse extends Mailable
   public function __construct(
     public TicketEmail $ticketEmail,
     public array $email_attachments = [],
+    public ?string $senderName = null,
   ) {
     $this->withSymfonyMessage(function (Email $message) {
       $message->getHeaders()->addTextHeader('In-Reply-To', $this->formatMessageId($this->ticketEmail->in_reply_to));
@@ -29,29 +31,28 @@ class StaffResponse extends Mailable
     });
   }
 
-
   private function formatMessageId(string $id): string
   {
     return str_starts_with($id, '<') ? $id : "<{$id}>";
   }
   public function envelope(): Envelope
   {
+    $fromName = $this->senderName ? $this->senderName : env('MAIL_FROM_NAME');
     return new Envelope(
       subject: $this->ticketEmail->subject,
-      from: new Address(env('MAIL_FROM_ADDRESS'), "lol"),
+      from: new Address(env('MAIL_FROM_ADDRESS'), $fromName),
       to: $this->ticketEmail->to_email,
     );
   }
 
-  // public function headers(): Headers
-  // {
-  //   return new Headers(
-  //     references: [$this->ticketEmail->in_reply_to],
-  //     text: [
-  //       'In-Reply-To' => $this->ticketEmail->in_reply_to,
-  //     ],
-  //   );
-  // }
+  public function headers(): Headers
+  {
+    return new Headers(
+      text: [
+        'Ticket-Mail-Id' => $this->ticketEmail->id,
+      ],
+    );
+  }
 
 
   public function content(): Content

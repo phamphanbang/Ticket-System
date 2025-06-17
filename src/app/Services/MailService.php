@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Jobs\FetchInfoCommandJob;
 use App\Mail\StaffResponse;
 use App\Models\Ticket;
 use App\Models\TicketEmail;
@@ -26,7 +27,7 @@ class MailService
     $ticket = Ticket::where('id', $ticketId)->first();
     TicketValidator::checkTicketExists($ticket);
 
-    $latestMail = $ticket->ticketEmails()->where('message_id', '!=', null)->latest()->first();
+    $latestMail = $ticket->ticketEmails()->where('message_id', '!=', null)->oldest()->first();
     $mail = TicketEmail::create([
       'in_reply_to' => $latestMail->message_id,
       'from_email' => env('MAIL_FROM_ADDRESS'),
@@ -44,14 +45,10 @@ class MailService
         $attachments[] = $this->attachmentService->saveAttachment($attachment, null, $ticket->id, $mail->id);
       }
     }
-    $messageId = null;
-    // Mail::to($ticket->client->email)->queue(new StaffResponse($mail, $attachments));
-    Mail::send(new StaffResponse($mail, $attachments),[], function ($message) use ($ticket, &$messageId) {
-      $messageId = $message->getMessageId();
-    });
-    $mail->update([
-      'message_id' => $messageId,
-    ]);
+
+    $mailable = new StaffResponse($mail, $attachments);
+    Mail::to($ticket->client->email)->send($mailable);
+    FetchInfoCommandJob::dispatch($mail->id);
     return $mail;
   }
 }
