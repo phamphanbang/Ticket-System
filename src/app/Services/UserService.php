@@ -94,7 +94,7 @@ class UserService
     $search = $request->input('search', null);
 
     $query = Client::query()->withCount('tickets');
-    $query = $query->search($search);
+    // $query = $query->search($search);
 
 
     if ((boolean) $isPaginate) {
@@ -109,7 +109,12 @@ class UserService
     }
 
     $users = $query->get()->map(function ($user) {
-      return new UserResource($user);
+      return [
+        'id' => $user->id,
+        'name' => $user->name,
+        'email' => $user->email,
+        'tickets_count' => $user->tickets_count,
+      ];
     });
 
     return $isPaginate ? [

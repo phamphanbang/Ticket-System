@@ -72,7 +72,7 @@ class UserController extends Controller
         );
     }
 
-    public function clientIndex($request) {
+    public function clientIndex(Request $request) {
         $data = $this->userService->getListClient($request);
         return $this->success(
             $data,
