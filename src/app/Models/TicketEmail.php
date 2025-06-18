@@ -21,6 +21,7 @@ class TicketEmail extends Model
         'references',
         'ticket_id',
         'from_email',
+        'from_name',
         'to_email',
         'subject',
         'body',
