@@ -74,10 +74,12 @@ class GmailFetchClientMails extends Command
         }
         if ($header->name === 'From') {
           $data['from_email'] = $this->getMail($header->value);
+          list($username, $domain) = explode('@', $data['from_email']);
+          $data['from_name'] = $username;
         }
-        if ($header->name === 'Personal') {
-          $data['from_name'] = $header->value;
-        }
+        // if ($header->name === 'Personal') {
+        //   $data['from_name'] = $header->value;
+        // }
         if ($header->name === 'To') {
           $data['to_email'] = $this->getMail($header->value);
         }
@@ -118,6 +120,10 @@ class GmailFetchClientMails extends Command
       ->latest()
       ->first();
     if (!$replyTarget) return;
+    $ticket = $replyTarget->ticket;
+    if ($ticket->status === TicketStatus::COMPLETE->value || $ticket->status === TicketStatus::ARCHIVED->value) {
+      return;
+    }
     try {
     $ticket = $replyTarget->ticket;
     $this->info('reply ticket : ' . $ticket->subject);
