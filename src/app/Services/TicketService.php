@@ -24,6 +24,7 @@ use Symfony\Component\HttpFoundation\Response;
 use App\Jobs\NotifyStaffHasBeenAssigned;
 use App\Jobs\NotifyTicketHasBeenCompleted;
 use App\Mail\ClientTicketCompleted;
+use App\Models\Client;
 use App\Models\User;
 use Illuminate\Support\Facades\View;
 
@@ -62,7 +63,7 @@ class TicketService
     }
 
     if ($user->role == UserRoles::ADMIN->value) {
-      $query->withTrashed();
+      // $query->withTrashed();
     } else {
       $query->where(function ($query) use ($user) {
         $query->where(function ($q) use ($user) {
@@ -104,7 +105,71 @@ class TicketService
     ];
   }
 
+  public function client_ticket($id, $filters = []) {
+    $query = Ticket::query()->with(['client', 'holder', 'staff'])
+    ->where('client_id', $id);
+    $user = Auth::user();
 
+    if (isset($filters['search'])) {
+      $query->where(function ($q) use ($filters) {
+        $q->where('title', 'like', "%{$filters['search']}%")
+          ->orWhere('description', 'like', "%{$filters['search']}%")
+          ->orWhereHas('client', function ($q) use ($filters) {
+            $q->where('name', 'like', "%{$filters['search']}%")
+              ->orWhere('email', 'like', "%{$filters['search']}%");
+          });
+      });
+    }
+
+    if (isset($filters["status"])) {
+      $query->where('status', $filters['status']);
+      if ($filters['status'] !== TicketStatus::ARCHIVED->value) {
+        $query->where('status', '!=', TicketStatus::ARCHIVED->value);
+      }
+    }
+
+    // if ($user->role == UserRoles::ADMIN->value) {
+    //   $query->withTrashed();
+    // } else {
+    //   $query->where(function ($query) use ($user) {
+    //     $query->where(function ($q) use ($user) {
+    //       $q->where('staff_id', $user->id)
+    //         ->orWhere('holder_id', $user->id);
+    //     })
+    //       ->orWhere(function ($q) use ($user) {
+    //         $q->where('holder_id', $user->id)
+    //           ->whereNotNull('deleted_at');
+    //       })
+    //       ->orWhereHas('logs', function ($q) use ($user) {
+    //         $q->where('staff_id', $user->id);
+    //       });
+    //   });
+
+    //   $query->whereNull('deleted_at');
+    // }
+
+
+    if (isset($filters['sort_by'])) {
+      $direction = $filters['sort_direction'] ?? 'desc';
+      $query->orderBy($filters['sort_by'], $direction);
+    } else {
+      $query->latest();
+    }
+
+    $perPage = $filters['limit'] ?? PaginateConstant::DEFAULT_PER_PAGE->value;
+    $page = $filters['page'] ?? PaginateConstant::DEFAULT_PAGE->value;
+
+    $paginator = $query->paginate($perPage, ['*'], 'page', $page);
+
+    return [
+      'data' => $paginator->items(),
+      'pagination' => [
+        'page' => $paginator->currentPage(),
+        'perPage' => $paginator->perPage(),
+        'total' => $paginator->total(),
+      ]
+    ];
+  }
 
   public function show(string $id): Ticket
   {
