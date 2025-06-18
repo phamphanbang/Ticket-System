@@ -146,6 +146,7 @@ class TicketService
     if ($shouldSendEmail) {
       $mail = TicketEmail::create([
         'from_email' => env('MAIL_FROM_ADDRESS'),
+        'from_name' => $user->name,
         'to_email' => $ticket->client->email,
         'body' => View::make('mails.clients.admin_create_new_ticket', ['ticket' => $ticket])->render(),
         'subject' => '[ESReport] ' . $ticket->title,
@@ -155,7 +156,7 @@ class TicketService
       ]);
       Mail::to($ticket->client->email)
         ->queue(new ClientTicketCreated($ticket, $mail));
-      FetchInfoCommandJob::dispatch($mail->id)->onQueue('high');
+      FetchInfoCommandJob::dispatch($mail->id);
     }
 
     return $ticket;

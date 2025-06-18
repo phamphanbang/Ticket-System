@@ -23,6 +23,6 @@ class FetchInfoCommandJob implements ShouldQueue
      */
     public function handle(): void
     {
-        Artisan::call('ticket:fetch-sent-emails', ['ticketMailId' => $this->ticketMailId]);
+        Artisan::call('gmail:fetch', ['ticketMailId' => $this->ticketMailId]);
     }
 }

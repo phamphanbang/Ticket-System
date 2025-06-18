@@ -7,6 +7,7 @@ use App\Mail\StaffResponse;
 use App\Models\Ticket;
 use App\Models\TicketEmail;
 use App\Validators\TicketValidator;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 
 class MailService
@@ -26,11 +27,13 @@ class MailService
   {
     $ticket = Ticket::where('id', $ticketId)->first();
     TicketValidator::checkTicketExists($ticket);
+    $user = Auth::user();
 
     $latestMail = $ticket->ticketEmails()->where('message_id', '!=', null)->oldest()->first();
     $mail = TicketEmail::create([
       'in_reply_to' => $latestMail->message_id,
       'from_email' => env('MAIL_FROM_ADDRESS'),
+      'from_name' => $user->name,
       'to_email' =>$ticket->client->email,
       'body' => $data['body'],
       'subject' => 'Re: ' . $latestMail->subject,
@@ -48,7 +51,7 @@ class MailService
 
     $mailable = new StaffResponse($mail, $attachments);
     Mail::to($ticket->client->email)->send($mailable);
-    FetchInfoCommandJob::dispatch($mail->id)->onQueue('high');
+    FetchInfoCommandJob::dispatch($mail->id);
     return $mail;
   }
 }

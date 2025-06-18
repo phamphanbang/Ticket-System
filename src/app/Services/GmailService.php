@@ -4,6 +4,7 @@ namespace App\Services;
 
 use Google\Client;
 use Google\Service\Gmail;
+use Illuminate\Support\Facades\Log;
 
 class GmailService
 {
@@ -40,11 +41,11 @@ class GmailService
     $this->gmailService = new Gmail($this->client);
   }
 
-  public function fetchMessages($maxResults = 10,$query = null)
+  public function fetchMessages($maxResults = 10, $query = null, $folder = 'INBOX')
   {
     $messagesResponse = $this->gmailService->users_messages->listUsersMessages('me', [
       'maxResults' => $maxResults,
-      'labelIds' => ['INBOX'],
+      'labelIds' => [$folder],
       'q' => $query,
     ]);
 
@@ -54,11 +55,102 @@ class GmailService
       $messages[] = [
         'id' => $msg->getId(),
         'headers' => $msg->getPayload()->getHeaders(),
+        'body' => $this->getTextBody($msg->getPayload()),
+        'attachments' => $this->getAttachments($msg->getPayload(), $message->getId()),
         'snippet' => $msg->getSnippet(),
       ];
       // $messages[] = $msg;
     }
 
     return $messages;
+  }
+
+  private function getTextBody($payload)
+  {
+    $body = $payload->getBody();
+    $data = $body->getData();
+
+    if ($data) {
+      return base64_decode(strtr($data, '-_', '+/'));
+    }
+
+    return $this->extractTextFromParts($payload->getParts());
+  }
+
+  private function extractTextFromParts($parts)
+  {
+    foreach ($parts as $part) {
+      $mimeType = $part->getMimeType();
+      $body = $part->getBody();
+      $data = $body->getData();
+
+      if ($mimeType === 'text/plain' || $mimeType === 'text/html') {
+        return base64_decode(strtr($data, '-_', '+/'));
+      }
+
+      // Recursively look in nested parts
+      if ($part->getParts()) {
+        $result = $this->extractTextFromParts($part->getParts());
+        if ($result) {
+          return $result;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  private function getAttachments($payload, $messageId)
+  {
+    $attachments = [];
+
+    $parts = $payload->getParts();
+    if (!$parts) return $attachments;
+
+    foreach ($parts as $part) {
+      if ($part->getFilename() && $part->getBody()->getAttachmentId()) {
+        $attachmentId = $part->getBody()->getAttachmentId();
+        $attachment = $this->gmailService->users_messages_attachments->get('me', $messageId, $attachmentId);
+        $data = $attachment->getData();
+
+        $attachments[] = [
+          'filename' => $part->getFilename(),
+          'mimeType' => $part->getMimeType(),
+          'data' => base64_decode(strtr($data, '-_', '+/')),
+        ];
+      }
+
+      // Look into nested parts
+      if ($part->getParts()) {
+        $attachments = array_merge($attachments, $this->getAttachmentsFromParts($part->getParts(), $messageId));
+      }
+    }
+
+    return $attachments;
+  }
+
+  private function getAttachmentsFromParts($parts, $messageId)
+  {
+    $attachments = [];
+
+    foreach ($parts as $part) {
+      if ($part->getFilename() && $part->getBody()->getAttachmentId()) {
+        $attachmentId = $part->getBody()->getAttachmentId();
+        $attachment = $this->gmailService->users_messages_attachments->get('me', $messageId, $attachmentId);
+        $data = $attachment->getData();
+
+        $attachments[] = [
+          'filename' => $part->getFilename(),
+          'mimeType' => $part->getMimeType(),
+          'data' => base64_decode(strtr($data, '-_', '+/')),
+        ];
+      }
+
+      if ($part->getParts()) {
+        $attachments = array_merge($attachments, $this->getAttachmentsFromParts($part->getParts(), $messageId));
+      }
+    }
+
+    return $attachments;
   }
 }
