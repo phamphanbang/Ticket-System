@@ -57,8 +57,7 @@ class GmailFetchClientMails extends Command
     foreach ($messages as $message) {
       
       $data = [];
-      $data['body'] = $message['body'];
-      $this->info($message['body']);
+      $data['body'] =$this->extractReplyFromEmail($message['body']);
       foreach ($message['headers'] as $header) {
         if ($header->name === 'In-Reply-To') {
           $data['in_reply_to'] = $header->value;
@@ -208,5 +207,16 @@ class GmailFetchClientMails extends Command
   private function getReference($references) {
     preg_match_all('/<([^>]+)>/', $references, $matches);
     return $matches[1];
+  }
+
+  function extractReplyFromEmail($body)
+  {
+    $pattern = '/^(.*?)(?=^Vào .+ viết:|^On .+ wrote:|^From:)/msu';
+
+    if (preg_match($pattern, $body, $matches)) {
+        return trim($matches[1]);
+    }
+
+    return trim($body);
   }
 }
