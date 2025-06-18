@@ -16,16 +16,11 @@ class MailResource extends JsonResource
    */
   public function toArray(Request $request): array
   {
-    $user = null;
-    if ($this->type === 'received') {
-      $user = Client::where('email', $this->from_email)->first();
-    } else {
-      $user = User::where('email', $this->from_email)->first();
-    }
     // dd($this);
     return [
       "id"=> $this->id,
-      "from"=> $user->name,
+      "from_name"=> $this->from_name,
+      "from_email"=> $this->from_email,
       "subject"=> $this->subject,
       "body"=> $this->body,
       "attachments"=> $this->attachments,
