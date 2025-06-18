@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Constants\TicketStatus;
+use App\Events\MailCreated;
 use App\Helpers\MailHelper;
 use App\Models\Client as ModelsClient;
 use App\Models\TicketEmail;
@@ -138,6 +139,7 @@ class GmailFetchClientMails extends Command
       'received_at' => Carbon::now(),
       'created_at' => $data['created_at']
     ]);
+    event(new MailCreated($receivedEmail)); 
     // $this->handleAttachments($receivedEmail, $message);
     $this->info("Reply added to ticket ID {$ticket->id}");
     Log::info("Reply processed for ticket ID {$ticket->id}");
