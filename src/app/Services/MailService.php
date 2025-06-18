@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Jobs\FetchInfoCommandJob;
+use App\Events\MailCreated;
 use App\Mail\StaffResponse;
 use App\Models\Ticket;
 use App\Models\TicketEmail;
@@ -52,6 +53,7 @@ class MailService
     $mailable = new StaffResponse($mail, $attachments);
     Mail::to($ticket->client->email)->send($mailable);
     FetchInfoCommandJob::dispatch($mail->id);
+    event(new MailCreated($mail));
     return $mail;
   }
 }
