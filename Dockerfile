@@ -22,13 +22,16 @@ RUN composer install
 
 # RUN chown -R www-data:www-data /var/www \
 #     && chmod -R 755 /var/www/storage
-RUN chmod -R 777 /var/www
+RUN chmod -R 777 /var/www && \
+    chown -R www-data:www-data /var/www/storage
 
 COPY ./docker/laravel/laravel-cron /etc/laravel-cron
 
 RUN chmod 0644 /etc/laravel-cron
 
 EXPOSE 9000
+
+USER www-data
 
 CMD ["php-fpm"]
 

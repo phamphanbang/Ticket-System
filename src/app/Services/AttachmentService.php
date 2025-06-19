@@ -86,10 +86,10 @@ class AttachmentService
   public function download(string $attachmentId)
   {
     $attachment = Attachment::with('comment','ticket')->findOrFail($attachmentId);
-    $comment = $attachment->comment;
-    $ticket = $comment->ticket;
+    // $comment = $attachment->comment;
+    // $ticket = $attachment->ticket;
 
-    TicketValidator::checkAuthorization($ticket);
+    // TicketValidator::checkAuthorization($ticket);
 
     if (!Storage::exists($attachment->file_path)) {
       throw new Exception('File not found', Response::HTTP_NOT_FOUND);

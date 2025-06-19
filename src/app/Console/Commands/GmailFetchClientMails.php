@@ -57,9 +57,9 @@ class GmailFetchClientMails extends Command
     $messages = $this->gmailService->fetchMessages(20, $query, $folder);
 
     foreach ($messages as $message) {
-      
+
       $data = [];
-      $data['body'] =$this->extractReplyFromEmail($message['body']);
+      $data['body'] = $this->extractReplyFromEmail($message['body']);
       foreach ($message['headers'] as $header) {
         if ($header->name === 'In-Reply-To') {
           $data['in_reply_to'] = $header->value;
@@ -126,24 +126,24 @@ class GmailFetchClientMails extends Command
       return;
     }
     try {
-    $ticket = $replyTarget->ticket;
-    $this->info('reply ticket : ' . $ticket->subject);
-    $receivedEmail = $ticket->ticketEmails()->create([
-      'message_id' => $data['message_id'],
-      'in_reply_to' => array_key_exists('in_reply_to', $data) ? $data['in_reply_to'] : null,
-      'references' => array_key_exists('references', $data) ? json_encode($data['references']) : null,
-      'from_email' => $data['from_email'],
-      'from_name' => $data['from_name'],
-      'to_email' => $data['to_email'],
-      'subject' => $data['subject'],
-      'body' => $data['body'],
-      'received_at' => Carbon::now(),
-      'created_at' => $data['created_at']
-    ]);
-    event(new MailCreated($receivedEmail)); 
-    // $this->handleAttachments($receivedEmail, $message);
-    $this->info("Reply added to ticket ID {$ticket->id}");
-    Log::info("Reply processed for ticket ID {$ticket->id}");
+      $ticket = $replyTarget->ticket;
+      $this->info('reply ticket : ' . $ticket->subject);
+      $receivedEmail = $ticket->ticketEmails()->create([
+        'message_id' => $data['message_id'],
+        'in_reply_to' => array_key_exists('in_reply_to', $data) ? $data['in_reply_to'] : null,
+        'references' => array_key_exists('references', $data) ? json_encode($data['references']) : null,
+        'from_email' => $data['from_email'],
+        'from_name' => $data['from_name'],
+        'to_email' => $data['to_email'],
+        'subject' => $data['subject'],
+        'body' => $data['body'],
+        'received_at' => Carbon::now(),
+        'created_at' => $data['created_at']
+      ]);
+      event(new MailCreated($receivedEmail));
+      // $this->handleAttachments($receivedEmail, $message);
+      $this->info("Reply added to ticket ID {$ticket->id}");
+      Log::info("Reply processed for ticket ID {$ticket->id}");
     } catch (\Exception $e) {
       $this->error('Error: ' . $e->getMessage());
     }
@@ -185,33 +185,38 @@ class GmailFetchClientMails extends Command
 
       $fileExtension = $attachment['file_extension'];
       $contentType = $attachment['content_type'];
-      
+
 
       $relativePath = "tickets/{$email->ticket_id}";
       $storagePath = storage_path("app/private/{$relativePath}");
       if (!Storage::disk('local')->exists($relativePath)) {
         Storage::disk('local')->makeDirectory($relativePath);
       }
-      file_put_contents($storagePath . '/' . $filename, $attachment['data']);
-      $fileSize = filesize($storagePath);
+      // file_put_contents($storagePath . '/' . $filename, $attachment['data']);
+      // $fileSize = filesize($storagePath . '/' . $filename);
       // $attachment->save($storagePath, $filename);
+      Storage::disk('local')->put($relativePath . '/' . $filename, $attachment['data']);
+
+      $fileSize = Storage::disk('local')->size($relativePath . '/' . $filename);
       $email->attachments()->create([
         'ticket_id' => $email->ticket_id,
         'file_name' => $filename,
         'file_extension' => $fileExtension,
-        'file_path' => $relativePath,
+        'file_path' => $relativePath . '/' . $filename,
         'file_size' => $fileSize,
         'content_type' => $contentType
       ]);
     }
   }
 
-  private function getMail($fullAddress) {
+  private function getMail($fullAddress)
+  {
     preg_match('/<(.+)>/', $fullAddress, $matches);
     return $matches[1] ?? $fullAddress;
   }
 
-  private function getReference($references) {
+  private function getReference($references)
+  {
     preg_match_all('/<([^>]+)>/', $references, $matches);
     return $matches[1];
   }
@@ -221,7 +226,7 @@ class GmailFetchClientMails extends Command
     $pattern = '/^(.*?)(?=^Vào .+ viết:|^On .+ wrote:|^From:)/msu';
 
     if (preg_match($pattern, $body, $matches)) {
-        return trim($matches[1]);
+      return trim($matches[1]);
     }
 
     return trim($body);
