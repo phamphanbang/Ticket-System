@@ -113,10 +113,16 @@ class GmailService
         $attachment = $this->gmailService->users_messages_attachments->get('me', $messageId, $attachmentId);
         $data = $attachment->getData();
 
+        $decodedData = base64_decode(strtr($data, '-_', '+/'));
+        $filename = $part->getFilename();
+        $fileExtension = pathinfo($filename, PATHINFO_EXTENSION);
+        $contentType = $part->getMimeType();
+
         $attachments[] = [
-          'filename' => $part->getFilename(),
-          'mimeType' => $part->getMimeType(),
-          'data' => base64_decode(strtr($data, '-_', '+/')),
+          'file_name' => $filename,
+          'file_extension' => $fileExtension,
+          'content_type' => $contentType,
+          'data' => $decodedData,
         ];
       }
 
@@ -139,10 +145,16 @@ class GmailService
         $attachment = $this->gmailService->users_messages_attachments->get('me', $messageId, $attachmentId);
         $data = $attachment->getData();
 
+        $decodedData = base64_decode(strtr($data, '-_', '+/'));
+        $filename = $part->getFilename();
+        $fileExtension = pathinfo($filename, PATHINFO_EXTENSION);
+        $contentType = $part->getMimeType();
+
         $attachments[] = [
-          'filename' => $part->getFilename(),
-          'mimeType' => $part->getMimeType(),
-          'data' => base64_decode(strtr($data, '-_', '+/')),
+          'file_name' => $filename,
+          'file_extension' => $fileExtension,
+          'content_type' => $contentType,
+          'data' => $decodedData,
         ];
       }
 

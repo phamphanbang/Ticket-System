@@ -172,26 +172,29 @@ class GmailFetchClientMails extends Command
       'created_at' => $data['created_at']
     ]);
     NotifyTicketHasBeenCreated::dispatch($ticket);
-    // $this->handleAttachments($mail, $message);
+    $this->handleAttachments($mail, $message);
     $this->info('Ticket' . $ticket->subject . ' created successfully.');
   }
 
   private function handleAttachments(TicketEmail $email, $message): void
   {
-    foreach ($message->getAttachments() as $attachment) {
-      $filename = uniqid() . '_' . $attachment->getName();
+    foreach ($message['attachments'] as $attachment) {
+      Log::info('attachment : ', $attachment);
+      $filename = uniqid() . '_' . $attachment['file_name'];
       $this->info('process attachment : ' . $filename);
 
-      $fileExtension = $attachment->getExtension();
-      $contentType = $attachment->getMimeType();
-      $fileSize = $attachment->getSize();
+      $fileExtension = $attachment['file_extension'];
+      $contentType = $attachment['content_type'];
+      
 
       $relativePath = "tickets/{$email->ticket_id}";
       $storagePath = storage_path("app/private/{$relativePath}");
       if (!Storage::disk('local')->exists($relativePath)) {
         Storage::disk('local')->makeDirectory($relativePath);
       }
-      $attachment->save($storagePath, $filename);
+      file_put_contents($storagePath . '/' . $filename, $attachment['data']);
+      $fileSize = filesize($storagePath);
+      // $attachment->save($storagePath, $filename);
       $email->attachments()->create([
         'ticket_id' => $email->ticket_id,
         'file_name' => $filename,
