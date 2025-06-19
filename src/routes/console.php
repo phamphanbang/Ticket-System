@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Schedule;
 // Artisan::command('gmail:fetch-client-mails', function () {
 //   Log::info('Fetching emails for tickets at ' . now());
 // })->everyFiveMinutes()->withoutOverlapping();
-Schedule::command('gmail:fetch-client-mails')->everyFiveMinutes()->withoutOverlapping();
+Schedule::command('gmail:fetch-client-mails')->everyFiveMinutes();
 
 Artisan::command('slack:sync-users', function () {
   Log::info('Syncing Slack users at ' . now());

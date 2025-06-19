@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Constants\TicketStatus;
 use App\Events\MailCreated;
 use App\Helpers\MailHelper;
+use App\Jobs\NotifyTicketHasBeenCreated;
 use App\Models\Client as ModelsClient;
 use App\Models\TicketEmail;
 use App\Models\Ticket;
@@ -170,6 +171,7 @@ class GmailFetchClientMails extends Command
       'received_at' => Carbon::now(),
       'created_at' => $data['created_at']
     ]);
+    NotifyTicketHasBeenCreated::dispatch($ticket);
     // $this->handleAttachments($mail, $message);
     $this->info('Ticket' . $ticket->subject . ' created successfully.');
   }

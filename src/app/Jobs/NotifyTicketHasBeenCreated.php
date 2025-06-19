@@ -10,7 +10,7 @@ use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 
-class NotifyTicketHasBeenCompleted implements ShouldQueue
+class NotifyTicketHasBeenCreated implements ShouldQueue
 {
     use Queueable, InteractsWithQueue, SerializesModels, Dispatchable;
 
@@ -28,6 +28,6 @@ class NotifyTicketHasBeenCompleted implements ShouldQueue
      */
     public function handle(): void
     {
-        app(SlackService::class)->sendCompletedNotification($this->ticket);
+        app(SlackService::class)->sendNewTicketNotification($this->ticket);
     }
 }
