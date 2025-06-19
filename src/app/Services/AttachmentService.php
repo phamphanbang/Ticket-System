@@ -64,16 +64,16 @@ class AttachmentService
     $attachment = Attachment::with('comment', 'ticket')->findOrFail($attachmentId);
     $comment = $attachment->comment;
     $ticket = $attachment->ticket;
-    if (
-      Auth::user()->id !== $comment->user_id &&
-      Auth::user()->role !== UserRoles::ADMIN->value &&
-      Auth::user()->id !== $ticket->holder_id
-    ) {
-      throw new Exception(
-        'You are not authorized to delete this attachment',
-        Response::HTTP_FORBIDDEN
-      );
-    }
+    // if (
+    //   Auth::user()->id !== $comment->user_id &&
+    //   Auth::user()->role !== UserRoles::ADMIN->value &&
+    //   Auth::user()->id !== $ticket->holder_id
+    // ) {
+    //   throw new Exception(
+    //     'You are not authorized to delete this attachment',
+    //     Response::HTTP_FORBIDDEN
+    //   );
+    // }
 
     return DB::transaction(function () use ($attachment) {
       if (Storage::exists($attachment->file_path)) {
