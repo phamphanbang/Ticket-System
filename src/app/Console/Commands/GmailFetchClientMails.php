@@ -141,7 +141,7 @@ class GmailFetchClientMails extends Command
         'created_at' => $data['created_at']
       ]);
       event(new MailCreated($receivedEmail));
-      // $this->handleAttachments($receivedEmail, $message);
+      $this->handleAttachments($receivedEmail, $message);
       $this->info("Reply added to ticket ID {$ticket->id}");
       Log::info("Reply processed for ticket ID {$ticket->id}");
     } catch (\Exception $e) {
