@@ -377,7 +377,7 @@ class TicketService
       $log = $latestAuditLog;
     }
 
-    if ($newStatus == TicketStatus::COMPLETE->value || $newStatus == TicketStatus::ARCHIVED->value) {
+    if ($newStatus == TicketStatus::ARCHIVED->value) {
       return $log;
     }
 
