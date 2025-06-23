@@ -60,6 +60,7 @@ class GmailService
         'snippet' => $msg->getSnippet(),
       ];
       // $messages[] = $msg;
+      $body = $this->getTextBody($msg->getPayload());
     }
 
     return $messages;
@@ -70,11 +71,43 @@ class GmailService
     $body = $payload->getBody();
     $data = $body->getData();
 
-    if ($data) {
+    if ($data && $payload->getMimeType() === 'text/html') {
       return base64_decode(strtr($data, '-_', '+/'));
     }
 
-    return $this->extractTextFromParts($payload->getParts());
+    return $this->extractHtmlFromParts($payload->getParts());
+  }
+
+  private function extractHtmlFromParts($parts)
+  {
+    $html = null;
+    $plain = null;
+
+    foreach ($parts as $part) {
+      $mimeType = $part->getMimeType();
+      $body = $part->getBody();
+      $data = $body->getData();
+
+      if ($data) {
+        $decoded = base64_decode(strtr($data, '-_', '+/'));
+
+        if ($mimeType === 'text/html') {
+          return $decoded; // Prefer HTML, return immediately
+        } elseif ($mimeType === 'text/plain' && $plain === null) {
+          $plain = $decoded; // Keep plain as fallback
+        }
+      }
+
+      // Recursively check nested parts
+      if ($part->getParts()) {
+        $result = $this->extractHtmlFromParts($part->getParts());
+        if ($result) {
+          return $result;
+        }
+      }
+    }
+
+    return $plain; // fallback to plain if no HTML found
   }
 
   private function extractTextFromParts($parts)

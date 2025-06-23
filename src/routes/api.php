@@ -42,7 +42,8 @@ Route::middleware(['auth'])->group(function () {
   Route::delete('/logs/{id}', [TicketController::class, 'deleteLog']);
   Route::put('/comments/{commentId}', [CommentController::class, 'update']);
   Route::delete('/comments/{commentId}', [CommentController::class, 'destroy']);
-  Route::get('attachments/{id}', [AttachmentController::class, 'download']);
+  Route::get('attachments/{id}', [AttachmentController::class, 'show']);
+  Route::get('attachments/{id}/download', [AttachmentController::class, 'download']);
   Route::delete('attachments/{id}', [AttachmentController::class, 'deleteAttachment']);
   Route::get('test-notification/{id}', [SlackWebhookController::class, 'sendTestNotification']);
 });

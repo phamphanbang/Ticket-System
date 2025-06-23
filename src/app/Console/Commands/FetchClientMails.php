@@ -14,6 +14,7 @@ use App\Services\TicketService;
 use Illuminate\Console\Command;
 use Webklex\IMAP\Facades\Client;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
@@ -48,14 +49,20 @@ class FetchClientMails extends Command
     {
         $this->info('Fetching emails...');
         Log::info('YourCommand is running at ' . now());
+        $lastUid = Cache::get('imap_last_uid', 0);
         $IMAP_client = Client::account('default');
         $IMAP_client->connect();
-
-        $fetchTime = Carbon::now()->subHour();
-        $messages = $IMAP_client->getFolder('INBOX')->messages()->since($fetchTime)->get();
+        $fetchTime = Carbon::now()->subMinutes(15);
+        // $messages = $IMAP_client->getFolder('INBOX')->messages()->since($fetchTime)->get();
+        if ($lastUid == 0) {
+            $messages = $IMAP_client->getFolder('INBOX')->messages()->since($fetchTime)->limit(20)->get();
+        } else {
+            $messages = $IMAP_client->getFolder('INBOX')->messages()->sinceUid($lastUid)->limit(20)->get();
+        }
 
         foreach ($messages as $message) {
             $data = $this->mailHelper->processIMAPEmail($message);
+            $uid = $message->getUid();
             $this->info('process email : ' . $data['message_id']);
             $isReply = $data['in_reply_to'];
             $hasTicketSubject = str_contains($data['subject'], '[ESReport]');
@@ -71,14 +78,13 @@ class FetchClientMails extends Command
 
             if (!$data['in_reply_to']) {
                 $this->handleNewTicket($data, $message);
-                continue;
+            } else {
+                $this->handleReply($data, $message);
             }
 
-            $this->handleReply($data, $message);
             // $message->setFlag('Seen');
+            Cache::put('imap_last_uid', $uid, 0);
         }
-
-
 
         $IMAP_client->disconnect();
 
@@ -117,7 +123,7 @@ class FetchClientMails extends Command
         $ticket_data = [
             'client_email' => $data['from_email'],
             'title' => $data['subject'],
-            'description' => $data['body'],
+            'description' => 'new description',
         ];
         $shouldSendEmail = false;
         $ticket = $this->ticketService->store($ticket_data, $shouldSendEmail);
@@ -140,6 +146,7 @@ class FetchClientMails extends Command
     {
         foreach ($message->getAttachments() as $attachment) {
             $filename = uniqid() . '_' . $attachment->getName();
+            $cid = trim($attachment->getContentId(), '<>');
             $this->info('process attachment : ' . $filename);
 
             $fileExtension = $attachment->getExtension();
@@ -152,7 +159,7 @@ class FetchClientMails extends Command
                 Storage::disk('local')->makeDirectory($relativePath);
             }
             $attachment->save($storagePath, $filename);
-            $email->attachments()->create([
+            $ticket_attachment = $email->attachments()->create([
                 'ticket_id' => $email->ticket_id,
                 'file_name' => $filename,
                 'file_extension' => $fileExtension,
@@ -160,6 +167,12 @@ class FetchClientMails extends Command
                 'file_size' => $fileSize,
                 'content_type' => $contentType
             ]);
+            $email->body = str_replace(
+                "cid:$cid",
+                'attachments/' . $ticket_attachment->id,
+                $email->body
+            );
+            $email->save();
         }
     }
 }
