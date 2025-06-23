@@ -22,18 +22,39 @@ class MailHelper
     $data['created_at'] = Carbon::parse($message->getDate())->toDateTimeString();
     $data['attachments'] = $message->getAttachments();
 
-    $data['body'] = $message->getHTMLBody();
+    $data['body'] = $this->removeGmailQuoteBlock($message->getHTMLBody());
     return $data;
   }
 
-  function extractReplyFromEmail($body)
+  function removeGmailQuoteBlock(string $html): string
   {
-    $pattern = '/^(.*?)(?=^Vào .+ viết:|^On .+ wrote:|^From:)/msu';
+    libxml_use_internal_errors(true); // suppress malformed HTML warnings
 
-    if (preg_match($pattern, $body, $matches)) {
-        return trim($matches[1]);
+    $dom = new \DOMDocument();
+    $dom->loadHTML(mb_convert_encoding($html, 'HTML-ENTITIES', 'UTF-8'));
+
+    $xpath = new \DOMXPath($dom);
+
+    // Match divs with both `gmail_quote` and `gmail_quote_container` classes
+    $nodes = $xpath->query('//div[contains(@class, "gmail_quote") and contains(@class, "gmail_quote_container")]');
+
+    foreach ($nodes as $node) {
+      $node->parentNode->removeChild($node);
     }
 
-    return trim($body);
+    // Return cleaned HTML without <body> tag
+    $body = $dom->saveHTML($dom->getElementsByTagName('body')->item(0));
+    return preg_replace('/^<body>|<\/body>$/', '', $body);
   }
+
+  // function extractReplyFromEmail($body)
+  // {
+  //   $pattern = '/^(.*?)(?=^Vào .+ viết:|^On .+ wrote:|^From:)/msu';
+
+  //   if (preg_match($pattern, $body, $matches)) {
+  //       return trim($matches[1]);
+  //   }
+
+  //   return trim($body);
+  // }
 }
