@@ -24,11 +24,6 @@ class StaffResponse extends Mailable
     public array $email_attachments = [],
     public ?string $senderName = null,
   ) {
-    $this->withSymfonyMessage(function (Email $message) {
-      $message->getHeaders()->addTextHeader('In-Reply-To', $this->formatMessageId($this->ticketEmail->in_reply_to));
-
-      $message->getHeaders()->addTextHeader('References', $this->formatMessageId($this->ticketEmail->in_reply_to));
-    });
   }
 
   private function formatMessageId(string $id): string
@@ -48,8 +43,11 @@ class StaffResponse extends Mailable
   public function headers(): Headers
   {
     return new Headers(
+      messageId: $this->ticketEmail->message_id,
       text: [
         'Ticket-Mail-Id' => $this->ticketEmail->id,
+        'In-Reply-To' => $this->formatMessageId($this->ticketEmail->in_reply_to),
+        'References' => $this->formatMessageId($this->ticketEmail->in_reply_to),
       ],
     );
   }
