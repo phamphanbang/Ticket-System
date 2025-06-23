@@ -14,6 +14,7 @@ use App\Services\TicketService;
 use Illuminate\Console\Command;
 use Webklex\IMAP\Facades\Client;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
@@ -48,14 +49,20 @@ class FetchClientMails extends Command
     {
         $this->info('Fetching emails...');
         Log::info('YourCommand is running at ' . now());
+        $lastUid = Cache::get('imap_last_uid', 0);
         $IMAP_client = Client::account('default');
         $IMAP_client->connect();
-
-        $fetchTime = Carbon::now()->subHour();
-        $messages = $IMAP_client->getFolder('INBOX')->messages()->since($fetchTime)->get();
+        $fetchTime = Carbon::now()->subMinutes(15);
+        // $messages = $IMAP_client->getFolder('INBOX')->messages()->since($fetchTime)->get();
+        if ($lastUid == 0) {
+            $messages = $IMAP_client->getFolder('INBOX')->messages()->since($fetchTime)->limit(20)->get();
+        } else {
+            $messages = $IMAP_client->getFolder('INBOX')->messages()->sinceUid($lastUid)->limit(20)->get();
+        }
 
         foreach ($messages as $message) {
             $data = $this->mailHelper->processIMAPEmail($message);
+            $uid = $message->getUid();
             $this->info('process email : ' . $data['message_id']);
             $isReply = $data['in_reply_to'];
             $hasTicketSubject = str_contains($data['subject'], '[ESReport]');
@@ -71,14 +78,13 @@ class FetchClientMails extends Command
 
             if (!$data['in_reply_to']) {
                 $this->handleNewTicket($data, $message);
-                continue;
+            } else {
+                $this->handleReply($data, $message);
             }
 
-            $this->handleReply($data, $message);
             // $message->setFlag('Seen');
+            Cache::put('imap_last_uid', $uid, 0);
         }
-
-
 
         $IMAP_client->disconnect();
 
