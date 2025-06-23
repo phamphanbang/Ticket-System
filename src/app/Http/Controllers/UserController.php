@@ -71,4 +71,12 @@ class UserController extends Controller
             __('messages.model_deleted', ['model' => 'User'])
         );
     }
+
+    public function clientIndex(Request $request) {
+        $data = $this->userService->getListClient($request);
+        return $this->success(
+            $data,
+            __('messages.model_list', ['model' => 'User'])
+        );
+    }
 }

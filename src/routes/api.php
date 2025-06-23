@@ -27,6 +27,9 @@ Route::middleware(['auth'])->group(function () {
   Route::get('tickets/{id}/attachments', [AttachmentController::class, 'getTicketAttachments']);
   Route::post('tickets/{id}/attachments', [AttachmentController::class, 'uploadAttachment']);
 
+  Route::get('clients', [UserController::class, 'clientIndex']);
+  Route::get('clients/{id}/tickets', [TicketController::class, 'clientTicket']);
+
   Route::get('tickets/{id}/mails', [MailController::class, 'index']);
   Route::post('tickets/{id}/mails', [MailController::class, 'store']);
 

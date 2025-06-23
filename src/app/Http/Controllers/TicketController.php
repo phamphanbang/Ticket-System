@@ -38,6 +38,24 @@ class TicketController extends Controller
         ], 'Tickets retrieved successfully');
     }
 
+    public function clientTicket(Request $request,$id) {
+        $filters = $request->only([
+            'search',
+            'status',
+            'sort_by',
+            'sort_direction',
+            'limit',
+            'page'
+        ]);
+
+        $result = $this->ticketService->client_ticket($id,$filters);
+
+        return $this->success([
+            'data' => TicketResource::collection($result['data']),
+            'pagination' => $result['pagination']
+        ], 'Tickets retrieved successfully');
+    }
+
     public function store(CreateTicketRequest $request)
     {
         $validated = $request->validated();

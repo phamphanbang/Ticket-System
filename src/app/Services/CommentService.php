@@ -35,7 +35,8 @@ class CommentService
     $perPage = $filters['limit'] ?? PaginateConstant::DEFAULT_PER_PAGE->value;
     $page = $filters['page'] ?? PaginateConstant::DEFAULT_PAGE->value;
 
-    $query->orderBy('created_at','desc');
+    $direction = $filters['direction'] ?? 'desc';
+    $query->orderBy('created_at', $direction);
     $paginator = $query->paginate($perPage, ['*'], 'page', $page);
 
     return [

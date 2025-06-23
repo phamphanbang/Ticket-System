@@ -131,4 +131,58 @@ class SlackService
         'blocks' => $blocks
       ]);
   }
+
+  public function sendNewTicketNotification(Ticket $ticket): void
+  {
+    $username = $ticket->holder->name;
+    $ticketTitle = $ticket->title;
+    $ticketUrl = env('FRONTEND_URL') . '/tickets/' . $ticket->id;
+
+    $blocks = [
+      [
+        "type" => "section",
+        "text" => [
+          "type" => "mrkdwn",
+          "text" => "✅ Hey, *{$username}*!\nA new ticket has been created:\n>*{$ticketTitle}*"
+        ]
+      ],
+      [
+        "type" => "context",
+        "elements" => [
+          [
+            "type" => "mrkdwn",
+            "text" => "You can review the new ticket in the Ticket app."
+          ]
+        ]
+      ],
+      [
+        "type" => "actions",
+        "elements" => [
+          [
+            "type" => "button",
+            "text" => [
+              "type" => "plain_text",
+              "text" => "📄 View New Ticket",
+              "emoji" => true
+            ],
+            "style" => "primary",
+            "url" => $ticketUrl
+          ]
+        ]
+      ]
+    ];
+
+    $dmResponse = Http::withToken(env('SLACK_BOT_USER_OAUTH_TOKEN'))
+      ->post('https://slack.com/api/conversations.open', [
+        'users' => $ticket->holder->slack_user_id
+      ]);
+
+    $channelId = $dmResponse->json('channel.id');
+
+    $sendResponse = Http::withToken(env('SLACK_BOT_USER_OAUTH_TOKEN'))
+      ->post('https://slack.com/api/chat.postMessage', [
+        'channel' => $channelId,
+        'blocks' => $blocks
+      ]);
+  }
 }

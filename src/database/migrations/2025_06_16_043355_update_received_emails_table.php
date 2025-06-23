@@ -19,6 +19,7 @@ return new class extends Migration
             $table->string('in_reply_to')->nullable();
             $table->json('references')->nullable();
             $table->string('from_email');
+            $table->string('from_name')->nullable();
             $table->string('to_email');
             $table->string('subject');
             $table->longText('body');

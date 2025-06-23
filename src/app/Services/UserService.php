@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Constants\PaginateConstant;
 use App\Http\Resources\UserResource;
+use App\Models\Client;
 use App\Models\User;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
@@ -87,4 +88,45 @@ class UserService
     $user->delete();
     return null;
   }
+
+  public function getListClient(Request $request) {
+    $isPaginate = $request->boolean('isPaginate', true);
+    $search = $request->input('search', null);
+
+    $query = Client::query()->withCount('tickets');
+    // $query = $query->search($search);
+
+
+    if ((boolean) $isPaginate) {
+      $perPage = $request->input('limit', PaginateConstant::DEFAULT_PER_PAGE->value);
+      $page = $request->input('page', PaginateConstant::DEFAULT_PAGE->value);
+      $offset = ($page - 1) * $perPage;
+      if ($offset < 0) {
+        $offset = PaginateConstant::DEFAULT_OFFSET->value;
+      }
+      $query = $query->offset($offset)->limit($perPage);
+      $total = $query->count();
+    }
+
+    $users = $query->get()->map(function ($user) {
+      return [
+        'id' => $user->id,
+        'name' => $user->name,
+        'email' => $user->email,
+        'tickets_count' => $user->tickets_count,
+      ];
+    });
+
+    return $isPaginate ? [
+      'data' => $users,
+      'pagination' => [
+        'total' => $total,
+        'page' => (int) $page,
+        'perPage' => (int) $perPage
+      ]
+    ] : [
+      'data' => $users,
+    ];
+  }
+
 }
