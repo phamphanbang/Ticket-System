@@ -22,11 +22,7 @@ class MailHelper
     $data['created_at'] = Carbon::parse($message->getDate())->toDateTimeString();
     $data['attachments'] = $message->getAttachments();
 
-    // $body = $message->getTextBody() ?: strip_tags($data['htmlBody']);
-    // $data['body'] = $this->extractReplyFromEmail($body);
-    // $data['parse_email'] = $message->getTextBody() ?: strip_tags($data['htmlBody']);
-    $data['body'] = $this->extractReplyFromEmail($message->getTextBody());
-    // $data['bodies'] = $message->getBodies();
+    $data['body'] = $message->getHTMLBody();
     return $data;
   }
 

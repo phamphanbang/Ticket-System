@@ -117,7 +117,7 @@ class FetchClientMails extends Command
         $ticket_data = [
             'client_email' => $data['from_email'],
             'title' => $data['subject'],
-            'description' => $data['body'],
+            'description' => 'new description',
         ];
         $shouldSendEmail = false;
         $ticket = $this->ticketService->store($ticket_data, $shouldSendEmail);
@@ -140,6 +140,7 @@ class FetchClientMails extends Command
     {
         foreach ($message->getAttachments() as $attachment) {
             $filename = uniqid() . '_' . $attachment->getName();
+            $cid = trim($attachment->getContentId(), '<>');
             $this->info('process attachment : ' . $filename);
 
             $fileExtension = $attachment->getExtension();
@@ -152,7 +153,7 @@ class FetchClientMails extends Command
                 Storage::disk('local')->makeDirectory($relativePath);
             }
             $attachment->save($storagePath, $filename);
-            $email->attachments()->create([
+            $ticket_attachment = $email->attachments()->create([
                 'ticket_id' => $email->ticket_id,
                 'file_name' => $filename,
                 'file_extension' => $fileExtension,
@@ -160,6 +161,12 @@ class FetchClientMails extends Command
                 'file_size' => $fileSize,
                 'content_type' => $contentType
             ]);
+            $email->body = str_replace(
+                "cid:$cid",
+                'attachments/' . $ticket_attachment->id,
+                $email->body
+            );
+            $email->save();
         }
     }
 }
