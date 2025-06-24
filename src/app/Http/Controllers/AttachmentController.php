@@ -45,29 +45,32 @@ class AttachmentController extends Controller
     );
   }
 
-  public function show(Attachment $attachment)
+  public function show(Request $request, string $attachmentId)
   {
-    $path = $attachment->file_path . '/' . $attachment->file_name;
+    $attachment = $this->attachmentService->getAttachmentById($attachmentId);
 
-    if (!Storage::exists($path)) {
+    if (!Storage::exists($attachment->file_path . '/' . $attachment->file_name)) {
       return $this->error('File not found', 404);
     }
 
-    $file = Storage::get($path);
-    $mime = Storage::mimeType($path);
+    $mimeType = Storage::mimeType($attachment->file_path);
 
-    return Response::make($file, 200, [
-      'Content-Type' => $mime,
-      'Content-Disposition' => 'inline; filename="' . basename($attachment->file_name) . '"',
+    return response()->stream(function () use ($attachment) {
+        $stream = Storage::readStream($attachment->file_path . '/' . $attachment->file_name);
+        fpassthru($stream);
+        fclose($stream);
+    }, 200, [
+        'Content-Type' => $mimeType,
+        'Content-Disposition' => 'inline; filename="' . basename($attachment->file_name) . '"',
     ]);
   }
 
   public function download(Request $request, string $attachmentId)
   {
-    $attachment = $this->attachmentService->download($attachmentId);
+    $attachment = $this->attachmentService->getAttachmentById($attachmentId);
 
-    return Storage::download(
-      $attachment->file_path,
+    return Storage::disk('local')->download(
+      $attachment->file_path . '/' . $attachment->file_name,
       $attachment->file_name,
       ['Content-Type' => $attachment->content_type]
     );
