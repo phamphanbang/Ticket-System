@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\PostAttachmentRequest;
 use App\Models\Attachment;
 use App\Services\AttachmentService;
+use App\Services\FileConversionService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Response;
@@ -47,21 +48,62 @@ class AttachmentController extends Controller
 
   public function show(Request $request, string $attachmentId)
   {
-    $attachment = $this->attachmentService->getAttachmentById($attachmentId);
+    // $attachment = $this->attachmentService->getAttachmentById($attachmentId);
 
-    if (!Storage::exists($attachment->file_path . '/' . $attachment->file_name)) {
+    // if (!Storage::exists($attachment->file_path . '/' . $attachment->file_name)) {
+    //   return $this->error('File not found', 404);
+    // }
+
+    // $mimeType = Storage::mimeType($attachment->file_path);
+
+    // return response()->stream(function () use ($attachment) {
+    //     $stream = Storage::readStream($attachment->file_path . '/' . $attachment->file_name);
+    //     fpassthru($stream);
+    //     fclose($stream);
+    // }, 200, [
+    //     'Content-Type' => $mimeType,
+    //     'Content-Disposition' => 'inline; filename="' . basename($attachment->file_name) . '"',
+    // ]);
+    $attachment = $this->attachmentService->getAttachmentById($attachmentId);
+    $fullPath = $attachment->file_path . '/' . $attachment->file_name;
+
+    if (!Storage::exists($fullPath)) {
       return $this->error('File not found', 404);
     }
 
-    $mimeType = Storage::mimeType($attachment->file_path);
+    $extension = strtolower(pathinfo($attachment->file_name, PATHINFO_EXTENSION));
 
-    return response()->stream(function () use ($attachment) {
-        $stream = Storage::readStream($attachment->file_path . '/' . $attachment->file_name);
-        fpassthru($stream);
-        fclose($stream);
+    if (in_array($extension, ['docx', 'xlsx', 'doc', 'xls', 'pptx', 'ppt', 'txt', 'csv'])) {
+      $pdfPath = preg_replace('/\.(docx|xlsx|doc|xls|pptx|ppt|txt|csv)$/i', '.pdf', $fullPath);
+
+      if (!Storage::exists($pdfPath)) {
+        $pdfPath = app(FileConversionService::class)->convertToPdf($fullPath);
+
+        if (!$pdfPath || !Storage::exists($pdfPath)) {
+          return $this->error('PDF conversion failed', 500);
+        }
+      }
+
+      return response()->file(Storage::path($pdfPath), [
+        'Content-Type' => 'application/pdf',
+        'Content-Disposition' => 'inline; filename="' . pathinfo($attachment->file_name, PATHINFO_FILENAME) . '.pdf"',
+      ]);
+    }
+
+    // Non-docx/xlsx: return original file as stream
+    $mimeType = Storage::mimeType($fullPath);
+    $stream = Storage::readStream($fullPath);
+
+    if (!$stream) {
+      return $this->error('Unable to read file', 500);
+    }
+
+    return response()->stream(function () use ($stream) {
+      fpassthru($stream);
+      fclose($stream);
     }, 200, [
-        'Content-Type' => $mimeType,
-        'Content-Disposition' => 'inline; filename="' . basename($attachment->file_name) . '"',
+      'Content-Type' => $mimeType,
+      'Content-Disposition' => 'inline; filename="' . basename($fullPath) . '"',
     ]);
   }
 
