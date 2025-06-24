@@ -83,7 +83,7 @@ class AttachmentService
     });
   }
 
-  public function download(string $attachmentId)
+  public function getAttachmentById(string $attachmentId)
   {
     $attachment = Attachment::with('comment','ticket')->findOrFail($attachmentId);
     // $comment = $attachment->comment;
