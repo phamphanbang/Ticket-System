@@ -65,18 +65,13 @@ class MailService
 
   function generateMessageId(string $domain = null): string
   {
-    // Use a safe default domain if none provided
     $domain = $domain ?? env('MAIL_FROM_DOMAIN', 'myapp.com');
-    
-    // Generate a unique identifier that's safe for message IDs
-    $unique = bin2hex(random_bytes(16)); // 32 hex characters
-    
-    // Format according to RFC 2822
+    $unique = bin2hex(random_bytes(16));
     return sprintf(
         '%s.%d@%s',
         $unique,
         time(),
-        $domain
+        $domain,
     );
   } 
 }
