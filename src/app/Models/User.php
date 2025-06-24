@@ -59,12 +59,12 @@ class User extends Authenticatable
 
     protected $searchable = [
         'name',
-        'email',        
+        'email',
     ];
 
     public $incrementing = false;
     protected $keyType = 'string';
-    
+
     public function tickets()
     {
         return $this->hasMany(Ticket::class);
@@ -75,4 +75,8 @@ class User extends Authenticatable
         $this->hasMany(TicketComment::class);
     }
 
+    public function slackConnection()
+    {
+        return $this->hasOne(UserSlackConnection::class);
+    }
 }
