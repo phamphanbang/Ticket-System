@@ -47,14 +47,20 @@ class MailHelper
     return preg_replace('/^<body>|<\/body>$/', '', $body);
   }
 
-  // function extractReplyFromEmail($body)
-  // {
-  //   $pattern = '/^(.*?)(?=^Vào .+ viết:|^On .+ wrote:|^From:)/msu';
-
-  //   if (preg_match($pattern, $body, $matches)) {
-  //       return trim($matches[1]);
-  //   }
-
-  //   return trim($body);
-  // }
+  public static function generateMessageId(string $domain = null): string
+  {
+    // Use a safe default domain if none provided
+    $domain = $domain ?? env('MAIL_FROM_DOMAIN', 'myapp.com');
+    
+    // Generate a unique identifier that's safe for message IDs
+    $unique = bin2hex(random_bytes(16)); // 32 hex characters
+    
+    // Format according to RFC 2822
+    return sprintf(
+        '%s.%d@%s',
+        $unique,
+        time(),
+        $domain
+    );
+  }
 }
