@@ -49,6 +49,6 @@ Route::middleware(['auth'])->group(function () {
   Route::get('test-notification/{id}', [SlackController::class, 'sendTestNotification']);
 
   Route::get('/slack/connect-url', [SlackController::class, 'getOAuthUrl']);
-  Route::get('/slack/callback', [SlackController::class, 'handleCallback']); // For redirect back
+  Route::post('/slack/callback', [SlackController::class, 'handleCallback']); // For redirect back
   Route::post('/slack/disconnect', [SlackController::class, 'disconnect']);
 });
