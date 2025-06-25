@@ -225,7 +225,7 @@ class TicketService
       ]);
       Mail::to($ticket->client->email)
         ->queue(new ClientTicketCreated($ticket, $mail));
-      FetchInfoCommandJob::dispatch($mail->id);
+      // FetchInfoCommandJob::dispatch($mail->id);
     }
 
     return $ticket;
@@ -318,10 +318,11 @@ class TicketService
     $user = Auth::user();
     $query = $ticket->logs()
       ->with(['staff', 'holder'])
+      ->whereNull('deleted_at')
       ->orderBy('created_at', 'desc');
-    if ($user->role == UserRoles::ADMIN->value) {
-      $query->withTrashed();
-    }
+    // if ($user->role == UserRoles::ADMIN->value) {
+    //   $query->withTrashed();
+    // }
     // else {
     //   $query->where(function ($query) use ($user) {
     //     $query->where(function ($q) use ($user) {
@@ -349,7 +350,7 @@ class TicketService
 
   public function deleteLog(string $id): void
   {
-    $log = TicketAuditLog::findOrFail($id);
+    $log = TicketAuditLog::where('id', $id)->first();
 
     $user = Auth::user();
 

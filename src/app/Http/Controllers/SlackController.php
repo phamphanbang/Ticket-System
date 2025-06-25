@@ -60,7 +60,7 @@ class SlackController extends Controller
     public function getOAuthUrl(Request $request)
     {
         $clientId = config('services.slack.client_id');
-        $redirectUri = env('FRONTEND_URL') . '/api/slack/callback';
+        $redirectUri = env('FRONTEND_URL') . '/slack/callback';
         $scopes = 'chat:write users:read';
 
         $url = "https://slack.com/oauth/v2/authorize?client_id={$clientId}&scope={$scopes}&redirect_uri={$redirectUri}";
@@ -72,34 +72,40 @@ class SlackController extends Controller
 
     public function handleCallback(Request $request)
     {
+        Log::info('code: ' . $request->code);
         $response = Http::asForm()->post('https://slack.com/api/oauth.v2.access', [
             'client_id' => config('services.slack.client_id'),
             'client_secret' => config('services.slack.client_secret'),
             'code' => $request->code,
-            'redirect_uri' => env('FRONTEND_URL') . '/api/slack/callback',
+            'redirect_uri' => env('FRONTEND_URL') . '/slack/callback',
         ]);
 
         if (!$response->ok() || !$response->json('ok')) {
-            return response()->json([
-                'error' => 'Slack authorization failed.',
-                'data' => $response->json(),
-            ], 400);
+            return $this->error('Slack authorization failed.', $response->json());
         }
 
         $data = $response->json();
         $user = Auth::user();
+
+        $dmResponse = Http::withToken(env('SLACK_BOT_USER_OAUTH_TOKEN'))
+            ->post('https://slack.com/api/conversations.open', [
+                'users' => $data['authed_user']['id']
+            ]);
+
+        $channelId = $dmResponse->json('channel.id');
 
         UserSlackConnection::updateOrCreate([
             'user_id' => $user->id,
         ], [
             'slack_user_id' => $data['authed_user']['id'],
             'slack_team_id' => $data['team']['id'],
+            'slack_channel_id' => $channelId,
             'access_token' => Crypt::encryptString($data['access_token']),
             'connected_at' => now(),
             'disconnected_at' => null,
         ]);
 
-        return response()->json(['message' => 'Slack connected successfully.']);
+        return $this->success(null, 'Slack connected successfully.');
     }
 
     public function disconnect(Request $request)
@@ -108,6 +114,6 @@ class SlackController extends Controller
             'disconnected_at' => now(),
         ]);
 
-        return response()->json(['message' => 'Slack disconnected.']);
+        return $this->success(null, 'Slack disconnected successfully.');
     }
 }

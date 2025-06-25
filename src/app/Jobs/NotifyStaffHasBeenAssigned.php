@@ -28,6 +28,7 @@ class NotifyStaffHasBeenAssigned implements ShouldQueue
      */
     public function handle(): void
     {
+        // '🎫'
         app(SlackService::class)->sendAssignedNotification($this->ticket);
     }
 }

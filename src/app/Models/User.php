@@ -79,4 +79,10 @@ class User extends Authenticatable
     {
         return $this->hasOne(UserSlackConnection::class);
     }
+
+    public function isSlackConnected()
+    {
+        $connection = $this->slackConnection()->first();
+        return $connection && $connection->isConnected();
+    }
 }
