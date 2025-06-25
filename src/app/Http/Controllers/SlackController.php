@@ -20,15 +20,6 @@ class SlackController extends Controller
     public function __construct(
         protected SlackService $slackService,
     ) {}
-    public function sendTestNotification(Ticket $ticket)
-    {
-        $this->slackService->sendAssignedNotification($ticket);
-
-        return $this->success(
-            null,
-            'Test notification sent successfully'
-        );
-    }
 
     public function handle(Request $request)
     {

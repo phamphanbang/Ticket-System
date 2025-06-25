@@ -46,7 +46,6 @@ Route::middleware(['auth'])->group(function () {
   Route::put('/comments/{commentId}', [CommentController::class, 'update']);
   Route::delete('/comments/{commentId}', [CommentController::class, 'destroy']);
   Route::delete('attachments/{id}', [AttachmentController::class, 'deleteAttachment']);
-  Route::get('test-notification/{id}', [SlackController::class, 'sendTestNotification']);
 
   Route::get('/slack/connect-url', [SlackController::class, 'getOAuthUrl']);
   Route::post('/slack/callback', [SlackController::class, 'handleCallback']); // For redirect back

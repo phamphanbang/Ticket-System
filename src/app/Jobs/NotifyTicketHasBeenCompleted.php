@@ -18,14 +18,14 @@ class NotifyTicketHasBeenCompleted implements ShouldQueue
 {
     use Queueable, InteractsWithQueue, SerializesModels, Dispatchable;
 
+    public $slackService;
     /**
      * Create a new job instance.
      */
     public function __construct(
         protected Ticket $ticket,
-        protected SlackService $slackService
     ) {
-        //
+        $this->slackService = app(SlackService::class);
     }
 
     /**
