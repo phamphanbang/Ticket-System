@@ -90,7 +90,7 @@ class TicketService
     } else {
       $query->latest();
     }
-
+    $total = $query->count();
     $perPage = $filters['limit'] ?? PaginateConstant::DEFAULT_PER_PAGE->value;
     $page = $filters['page'] ?? PaginateConstant::DEFAULT_PAGE->value;
 
@@ -101,7 +101,7 @@ class TicketService
       'pagination' => [
         'page' => $paginator->currentPage(),
         'perPage' => $paginator->perPage(),
-        'total' => $paginator->total(),
+        'total' => $total,
       ]
     ];
   }
@@ -157,6 +157,7 @@ class TicketService
       $query->latest();
     }
 
+    $total = $query->count();
     $perPage = $filters['limit'] ?? PaginateConstant::DEFAULT_PER_PAGE->value;
     $page = $filters['page'] ?? PaginateConstant::DEFAULT_PAGE->value;
 
@@ -167,7 +168,7 @@ class TicketService
       'pagination' => [
         'page' => $paginator->currentPage(),
         'perPage' => $paginator->perPage(),
-        'total' => $paginator->total(),
+        'total' => $total,
       ]
     ];
   }
@@ -330,6 +331,7 @@ class TicketService
     //     $query->whereNull('deleted_at');
     //   });
     // }
+    $total = $query->count();
     $perPage = $filters['limit'] ?? PaginateConstant::DEFAULT_PER_PAGE->value;
     $page = $filters['page'] ?? PaginateConstant::DEFAULT_PAGE->value;
 
@@ -340,7 +342,7 @@ class TicketService
       'pagination' => [
         'page' => $paginator->currentPage(),
         'perPage' => $paginator->perPage(),
-        'total' => $paginator->total(),
+        'total' => $total,
       ]
     ];
   }
