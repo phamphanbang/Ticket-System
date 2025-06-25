@@ -3,6 +3,8 @@
 namespace App\Jobs;
 
 use App\Models\Ticket;
+use App\Models\TicketAuditLog;
+use App\Models\User;
 use App\Services\SlackService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -20,7 +22,8 @@ class NotifyTicketHasBeenCompleted implements ShouldQueue
      * Create a new job instance.
      */
     public function __construct(
-        protected Ticket $ticket
+        protected Ticket $ticket,
+        protected SlackService $slackService
     ) {
         //
     }
@@ -30,76 +33,25 @@ class NotifyTicketHasBeenCompleted implements ShouldQueue
      */
     public function handle(): void
     {
+        $this->sendNotifyToHolder();
+        $this->sendNotifyToStaff();
+    }
 
-        // app(SlackService::class)->sendCompletedNotification($this->ticket);
+    protected function sendNotifyToHolder()
+    {
         $holder = $this->ticket->holder;
-        $staffName = $this->ticket->staff ? $this->ticket->staff->name : 'Unassigned';
         if (!$holder->isSlackConnected()) return;
-        $connection = $holder->slackConnection;
-        $ticketTitle = $this->ticket->title;
-        $ticketUrl = env('FRONTEND_URL') . '/tickets/' . $this->ticket->id;
+        $staffName = $this->ticket->staff ? $this->ticket->staff->name : 'Unassigned';
+        $ticketUrl = $this->ticket->ticketUrl();
 
-        // $blocks = [
-        //     [
-        //         "type" => "section",
-        //         "text" => [
-        //             "type" => "mrkdwn",
-        //             "text" => "*✅ Ticket Completed: {$ticketTitle}*"
-        //         ]
-        //     ],
-        //     [
-        //         "type" => "section",
-        //         "text" => [
-        //             "type" => "mrkdwn",
-        //             "text" => "Hey, *{$holder->name}*! A ticket has just been marked as *completed*."
-        //         ]
-        //     ],
-        //     [
-        //         "type" => "section",
-        //         "fields" => [
-        //             [
-        //                 "type" => "mrkdwn",
-        //                 "text" => "*👤 Client:*\n{$this->ticket->client->name}"
-        //             ],
-        //             [
-        //                 "type" => "mrkdwn",
-        //                 "text" => "*🧑‍💼 Assigned To:*\n{$holder->name}"
-        //             ]
-        //         ]
-        //     ],
-        //     [
-        //         "type" => "context",
-        //         "elements" => [
-        //             [
-        //                 "type" => "mrkdwn",
-        //                 "text" => "You can review the completed ticket in the Ticket app."
-        //             ]
-        //         ]
-        //     ],
-        //     [
-        //         "type" => "actions",
-        //         "elements" => [
-        //             [
-        //                 "type" => "button",
-        //                 "text" => [
-        //                     "type" => "plain_text",
-        //                     "text" => "📄 View Completed Ticket",
-        //                     "emoji" => true
-        //                 ],
-        //                 "style" => "primary",
-        //                 "url" => $ticketUrl
-        //             ]
-        //         ]
-        //     ]
-        // ];
         $blocks = [
             [
                 "type" => "section",
                 "text" => [
                     "type" => "mrkdwn",
-                    "text" => "✅ *Ticket Completed: {$ticketTitle}*\n"
-                        . "Hey, *{$holder->name}*! A ticket has just been marked as *completed*.\n"
-                        . " *Id:* {$this->ticket->id}\n"
+                    "text" => "✅ *Ticket Completed: {$this->ticket->title}*\n"
+                        . "Hey, *{$holder->name}*! Your ticket has been marked as *completed*.\n"
+                        . ":id: *Id:* {$this->ticket->id}\n"
                         . "👤 *Client:* {$this->ticket->client->name}\n"
                         . "🧑‍💼 *Assigned To:* {$staffName}\n"
                         . "You can review the completed ticket in the Ticket app."
@@ -122,22 +74,50 @@ class NotifyTicketHasBeenCompleted implements ShouldQueue
             ]
         ];
 
-        if (!$connection->slack_channel_id) {
-            $dmResponse = Http::withToken(env('SLACK_BOT_USER_OAUTH_TOKEN'))
-                ->post('https://slack.com/api/conversations.open', [
-                    'users' => $connection->slack_user_id
-                ]);
+        $this->slackService->sendSlackNotify($holder->slackConnection, $blocks);
+    }
 
-            $channelId = $dmResponse->json('channel.id');
-            $connection->update([
-                'slack_channel_id' => $channelId
-            ]);
+    protected function sendNotifyToStaff()
+    {
+        $staffIds = TicketAuditLog::select('staff_id')->where('ticket_id', $this->ticket->id)->distinct()->pluck('staff_id');
+        $staffs = User::whereIn('id', $staffIds)->get();
+
+        foreach ($staffs as $staff) {
+            if (!$staff->isSlackConnected()) continue;
+            $staffName = $staff->name;
+            $ticketUrl = $this->ticket->ticketUrl();
+
+            $blocks = [
+                [
+                    "type" => "section",
+                    "text" => [
+                        "type" => "mrkdwn",
+                        "text" => "✅ *Ticket Completed: {$this->ticket->title}*\n"
+                            . "Hey, *{$staff->name}*! A ticket you assigned to has been marked as *completed*.\n"
+                            . ":id: *Id:* {$this->ticket->id}\n"
+                            . "👤 *Client:* {$this->ticket->client->name}\n"
+                            . "🧑‍💼 *Assigned To:* {$staffName}\n"
+                            . "You can review the completed ticket in the Ticket app."
+                    ]
+                ],
+                [
+                    "type" => "actions",
+                    "elements" => [
+                        [
+                            "type" => "button",
+                            "text" => [
+                                "type" => "plain_text",
+                                "text" => "📄 View Completed Ticket",
+                                "emoji" => true
+                            ],
+                            "style" => "primary",
+                            "url" => $ticketUrl
+                        ]
+                    ]
+                ]
+            ];
+
+            $this->slackService->sendSlackNotify($staff->slackConnection, $blocks);
         }
-
-        $sendResponse = Http::withToken(env('SLACK_BOT_USER_OAUTH_TOKEN'))
-            ->post('https://slack.com/api/chat.postMessage', [
-                'channel' => $connection->slack_channel_id,
-                'blocks' => $blocks
-            ]);
     }
 }

@@ -75,7 +75,10 @@ class Ticket extends Model
         return $query->where('status', $status);
     }
 
-    
+    public function ticketUrl() 
+    {
+        return env('FRONTEND_URL') . '/tickets/' . $this->id;
+    }
 
 
 }
