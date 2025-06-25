@@ -16,11 +16,16 @@ class MailService
   public function __construct(
     protected AttachmentService $attachmentService,
   ) {}
-  public function index($ticketId)
+  public function index($ticketId, $limit, $cursor)
   {
     $ticket = Ticket::where('id', $ticketId)->first();
     TicketValidator::checkTicketExists($ticket);
-    $mails = $ticket->ticketEmails()->with('attachments')->get();
+    $query = $ticket->ticketEmails()->with('attachments')->orderBy('created_at', 'desc');
+    if($cursor) {
+      $cursorMail = TicketEmail::where('id', $cursor)->first();
+      $mails = $query->where('created_at', '<', $cursorMail->created_at);
+    }
+    $mails = $query->take($limit + 1)->get();
     return $mails;
   }
 

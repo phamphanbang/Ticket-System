@@ -55,12 +55,12 @@ class FetchClientMails extends Command
         $IMAP_client = Client::account('default');
         $IMAP_client->connect();
         $fetchTime = Carbon::now()->subMinutes(15);
-        // $messages = $IMAP_client->getFolder('INBOX')->messages()->since($fetchTime)->get();
-        if ($lastUid == 0) {
-            $messages = $IMAP_client->getFolder('INBOX')->messages()->since($fetchTime)->limit(20)->get();
-        } else {
-            $messages = $IMAP_client->getFolder('INBOX')->messages()->sinceUid($lastUid)->limit(20)->get();
-        }
+        $messages = $IMAP_client->getFolder('INBOX')->messages()->since($fetchTime)->get();
+        // if ($lastUid == 0) {
+            // $messages = $IMAP_client->getFolder('INBOX')->messages()->since($fetchTime)->limit(20)->get();
+        // } else {
+        //     $messages = $IMAP_client->getFolder('INBOX')->messages()->sinceUid($lastUid)->limit(20)->get();
+        // }
 
         foreach ($messages as $message) {
             $data = $this->mailHelper->processIMAPEmail($message);
