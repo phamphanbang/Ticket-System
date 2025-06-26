@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Jobs\FetchInfoCommandJob;
 use App\Events\MailCreated;
 use App\Mail\StaffResponse;
 use App\Models\Ticket;
