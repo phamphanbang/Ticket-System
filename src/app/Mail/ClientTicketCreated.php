@@ -40,6 +40,7 @@ class ClientTicketCreated extends Mailable implements ShouldQueue
     public function headers(): Headers
     {
       return new Headers(
+        messageId: $this->ticketEmail->message_id,
         text: [
           'Ticket-Mail-Id' => $this->ticketEmail->id,
         ],

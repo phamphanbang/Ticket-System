@@ -3,6 +3,8 @@
 namespace App\Jobs;
 
 use App\Models\Ticket;
+use App\Models\TicketAuditLog;
+use App\Models\User;
 use App\Services\SlackService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -14,13 +16,14 @@ class NotifyStaffHasBeenAssigned implements ShouldQueue
 {
     use Queueable, InteractsWithQueue, SerializesModels, Dispatchable;
 
+    public $slackService;
     /**
      * Create a new job instance.
      */
     public function __construct(
-        protected Ticket $ticket
+        protected Ticket $ticket,
     ) {
-        //
+        $this->slackService = app(SlackService::class);
     }
 
     /**
@@ -28,6 +31,50 @@ class NotifyStaffHasBeenAssigned implements ShouldQueue
      */
     public function handle(): void
     {
-        app(SlackService::class)->sendAssignedNotification($this->ticket);
+        $this->sendNotifyToStaff();
+    }
+
+    protected function sendNotifyToStaff()
+    {
+        $staffIds = TicketAuditLog::select('staff_id')->where('ticket_id', $this->ticket->id)->distinct()->pluck('staff_id');
+        $staffs = User::whereIn('id', $staffIds)->get();
+
+        foreach ($staffs as $staff) {
+            if (!$staff->isSlackConnected()) continue;
+            $staffName = $staff->name;
+            $ticketUrl = $this->ticket->ticketUrl();
+
+            $blocks = [
+                [
+                    "type" => "section",
+                    "text" => [
+                        "type" => "mrkdwn",
+                        "text" => "🔄 *Ticket Reassigned: {$this->ticket->title}*\n"
+                            . "Heads up, team! This ticket has been *reassigned* to a new staff member.\n"
+                            . ":id: *Id:* {$this->ticket->id}\n"
+                            . "👤 *Client:* {$this->ticket->client->name}\n"
+                            . "🧑‍💼 *New Assignee:* {$staffName}\n"
+                            . "Please stay updated and coordinate if needed."
+                    ]
+                ],
+                [
+                    "type" => "actions",
+                    "elements" => [
+                        [
+                            "type" => "button",
+                            "text" => [
+                                "type" => "plain_text",
+                                "text" => "📄 View Ticket Details",
+                                "emoji" => true
+                            ],
+                            "style" => "primary",
+                            "url" => $ticketUrl
+                        ]
+                    ]
+                ]
+            ];
+
+            $this->slackService->sendSlackNotify($staff->slackConnection, $blocks);
+        }
     }
 }

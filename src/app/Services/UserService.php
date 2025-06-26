@@ -32,8 +32,8 @@ class UserService
       if ($offset < 0) {
         $offset = PaginateConstant::DEFAULT_OFFSET->value;
       }
-      $query = $query->offset($offset)->limit($perPage);
       $total = $query->count();
+      $query = $query->offset($offset)->limit($perPage);
     }
 
     $users = $query->get()->map(function ($user) {

@@ -6,14 +6,17 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CommentController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MailController;
-use App\Http\Controllers\SlackWebhookController;
+use App\Http\Controllers\SlackController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\UserController;
 
 Route::post('auth/login', [AuthController::class, 'login']);
 Route::middleware('auth:sanctum')->post('auth/logout', [AuthController::class, 'logout']);
+Route::get('attachments/{id}', [AttachmentController::class, 'show']);
+Route::get('attachments/{id}/download', [AttachmentController::class, 'download']);
 
-Route::post('slack/user', [SlackWebhookController::class, 'handle']);
+Route::post('slack/user', [SlackController::class, 'handle']);
+
 
 Route::middleware(['auth'])->group(function () {
   Route::get('auth/me', [AuthController::class, 'me']);
@@ -42,8 +45,9 @@ Route::middleware(['auth'])->group(function () {
   Route::delete('/logs/{id}', [TicketController::class, 'deleteLog']);
   Route::put('/comments/{commentId}', [CommentController::class, 'update']);
   Route::delete('/comments/{commentId}', [CommentController::class, 'destroy']);
-  Route::get('attachments/{id}', [AttachmentController::class, 'show']);
-  Route::get('attachments/{id}/download', [AttachmentController::class, 'download']);
   Route::delete('attachments/{id}', [AttachmentController::class, 'deleteAttachment']);
-  Route::get('test-notification/{id}', [SlackWebhookController::class, 'sendTestNotification']);
+
+  Route::get('/slack/connect-url', [SlackController::class, 'getOAuthUrl']);
+  Route::post('/slack/callback', [SlackController::class, 'handleCallback']); // For redirect back
+  Route::post('/slack/disconnect', [SlackController::class, 'disconnect']);
 });

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Ticket;
+use App\Models\UserSlackConnection;
 use Exception;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -19,63 +20,6 @@ class SlackService
     }
 
     return $response['members'];
-  }
-
-  public function sendAssignedNotification(Ticket $ticket): void
-  {
-    Log::info('start sending assigned notification');
-    $username = $ticket->staff->name;
-    Log::info('username: ' . $username);
-    $ticketTitle = $ticket->title;
-    $ticketUrl = env('FRONTEND_URL') . '/tickets/' . $ticket->id;
-
-    $blocks = [
-      [
-        "type" => "section",
-        "text" => [
-          "type" => "mrkdwn",
-          "text" => "👋 Hey, *{$username}*!\nYou have been assigned to a new ticket:\n>*{$ticketTitle}*"
-        ]
-      ],
-      [
-        "type" => "context",
-        "elements" => [
-          [
-            "type" => "mrkdwn",
-            "text" => "Please go to the Ticket app to check your assignment."
-          ]
-        ]
-      ],
-      [
-        "type" => "actions",
-        "elements" => [
-          [
-            "type" => "button",
-            "text" => [
-              "type" => "plain_text",
-              "text" => "🔍 View Ticket",
-              "emoji" => true
-            ],
-            "style" => "primary",
-            "url" => $ticketUrl
-          ]
-        ]
-      ]
-    ];
-
-    $dmResponse = Http::withToken(env('SLACK_BOT_USER_OAUTH_TOKEN'))
-      ->post('https://slack.com/api/conversations.open', [
-        'users' => $ticket->staff->slack_user_id
-      ]);
-
-    $channelId = $dmResponse->json('channel.id');
-    Log::info('channelId: ' . $dmResponse);
-
-    $sendResponse = Http::withToken(env('SLACK_BOT_USER_OAUTH_TOKEN'))
-      ->post('https://slack.com/api/chat.postMessage', [
-        'channel' => $channelId,
-        'blocks' => $blocks
-      ]);
   }
 
   public function sendCompletedNotification(Ticket $ticket): void
@@ -118,18 +62,7 @@ class SlackService
       ]
     ];
 
-    $dmResponse = Http::withToken(env('SLACK_BOT_USER_OAUTH_TOKEN'))
-      ->post('https://slack.com/api/conversations.open', [
-        'users' => $ticket->holder->slack_user_id
-      ]);
-
-    $channelId = $dmResponse->json('channel.id');
-
-    $sendResponse = Http::withToken(env('SLACK_BOT_USER_OAUTH_TOKEN'))
-      ->post('https://slack.com/api/chat.postMessage', [
-        'channel' => $channelId,
-        'blocks' => $blocks
-      ]);
+    $this->sendSlackNotify($ticket->holder->slackConnection, $blocks);
   }
 
   public function sendNewTicketNotification(Ticket $ticket): void
@@ -172,16 +105,26 @@ class SlackService
       ]
     ];
 
-    $dmResponse = Http::withToken(env('SLACK_BOT_USER_OAUTH_TOKEN'))
-      ->post('https://slack.com/api/conversations.open', [
-        'users' => $ticket->holder->slack_user_id
-      ]);
+    $this->sendSlackNotify($ticket->holder->slackConnection, $blocks);
+  }
 
-    $channelId = $dmResponse->json('channel.id');
+  public function sendSlackNotify(UserSlackConnection $connection, array $blocks)
+  {
+    if (!$connection->slack_channel_id) {
+      $dmResponse = Http::withToken(env('SLACK_BOT_USER_OAUTH_TOKEN'))
+        ->post('https://slack.com/api/conversations.open', [
+          'users' => $connection->slack_user_id
+        ]);
+
+      $channelId = $dmResponse->json('channel.id');
+      $connection->update([
+        'slack_channel_id' => $channelId
+      ]);
+    }
 
     $sendResponse = Http::withToken(env('SLACK_BOT_USER_OAUTH_TOKEN'))
       ->post('https://slack.com/api/chat.postMessage', [
-        'channel' => $channelId,
+        'channel' => $connection->slack_channel_id,
         'blocks' => $blocks
       ]);
   }

@@ -9,6 +9,7 @@ use App\Constants\UserRoles;
 use App\Events\AuditLogDeleted;
 use App\Events\AuditLogged;
 use App\Events\TicketUpdated;
+use App\Helpers\MailHelper;
 use App\Jobs\FetchInfoCommandJob;
 use App\Mail\ClientTicketCreated;
 use App\Models\Ticket;
@@ -89,7 +90,7 @@ class TicketService
     } else {
       $query->latest();
     }
-
+    $total = $query->count();
     $perPage = $filters['limit'] ?? PaginateConstant::DEFAULT_PER_PAGE->value;
     $page = $filters['page'] ?? PaginateConstant::DEFAULT_PAGE->value;
 
@@ -100,7 +101,7 @@ class TicketService
       'pagination' => [
         'page' => $paginator->currentPage(),
         'perPage' => $paginator->perPage(),
-        'total' => $paginator->total(),
+        'total' => $total,
       ]
     ];
   }
@@ -156,6 +157,7 @@ class TicketService
       $query->latest();
     }
 
+    $total = $query->count();
     $perPage = $filters['limit'] ?? PaginateConstant::DEFAULT_PER_PAGE->value;
     $page = $filters['page'] ?? PaginateConstant::DEFAULT_PAGE->value;
 
@@ -166,7 +168,7 @@ class TicketService
       'pagination' => [
         'page' => $paginator->currentPage(),
         'perPage' => $paginator->perPage(),
-        'total' => $paginator->total(),
+        'total' => $total,
       ]
     ];
   }
@@ -209,7 +211,9 @@ class TicketService
       return $ticket->fresh();
     });
     if ($shouldSendEmail) {
+      $customMessageId = MailHelper::generateMessageId();
       $mail = TicketEmail::create([
+        'message_id' => $customMessageId,
         'from_email' => env('MAIL_FROM_ADDRESS'),
         'from_name' => $user->name,
         'to_email' => $ticket->client->email,
@@ -221,7 +225,7 @@ class TicketService
       ]);
       Mail::to($ticket->client->email)
         ->queue(new ClientTicketCreated($ticket, $mail));
-      FetchInfoCommandJob::dispatch($mail->id);
+      // FetchInfoCommandJob::dispatch($mail->id);
     }
 
     return $ticket;
@@ -314,10 +318,11 @@ class TicketService
     $user = Auth::user();
     $query = $ticket->logs()
       ->with(['staff', 'holder'])
+      ->whereNull('deleted_at')
       ->orderBy('created_at', 'desc');
-    if ($user->role == UserRoles::ADMIN->value) {
-      $query->withTrashed();
-    }
+    // if ($user->role == UserRoles::ADMIN->value) {
+    //   $query->withTrashed();
+    // }
     // else {
     //   $query->where(function ($query) use ($user) {
     //     $query->where(function ($q) use ($user) {
@@ -327,6 +332,7 @@ class TicketService
     //     $query->whereNull('deleted_at');
     //   });
     // }
+    $total = $query->count();
     $perPage = $filters['limit'] ?? PaginateConstant::DEFAULT_PER_PAGE->value;
     $page = $filters['page'] ?? PaginateConstant::DEFAULT_PAGE->value;
 
@@ -337,14 +343,14 @@ class TicketService
       'pagination' => [
         'page' => $paginator->currentPage(),
         'perPage' => $paginator->perPage(),
-        'total' => $paginator->total(),
+        'total' => $total,
       ]
     ];
   }
 
   public function deleteLog(string $id): void
   {
-    $log = TicketAuditLog::findOrFail($id);
+    $log = TicketAuditLog::where('id', $id)->first();
 
     $user = Auth::user();
 

@@ -25,8 +25,8 @@ class AttachmentService
     $fileExtension = $file->getClientOriginalExtension();
     $contentType = $file->getMimeType();
     $fileSize = $file->getSize();
-
-    $filePath = $file->store("tickets/{$ticket_id}");
+    $filePath = "tickets/{$ticket_id}";
+    $file->storeAs("tickets/{$ticket_id}",$fileName);
     $attachment = Attachment::create([
       'ticket_id' => $ticket_id,
       'comment_id' => $comment_id,

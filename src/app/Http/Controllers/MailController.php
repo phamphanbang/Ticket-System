@@ -25,7 +25,9 @@ class MailController extends Controller
   
   public function index(Request $request, string $ticketId)
   {
-    $data = $this->mailService->index($ticketId);
+    $limit = $request->input('limit', 10);
+    $cursor = $request->input('cursor');
+    $data = $this->mailService->index($ticketId, $limit, $cursor);
 
     return $this->success([
       'data' => MailResource::collection($data)

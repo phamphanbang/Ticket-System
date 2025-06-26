@@ -4,6 +4,8 @@ namespace App\Console\Commands;
 
 use App\Constants\TicketStatus;
 use App\Helpers\MailHelper;
+use App\Jobs\NotifyClientReplyEmail;
+use App\Jobs\NotifyTicketHasBeenCreated;
 use App\Models\Client as ModelsClient;
 use App\Models\TicketEmail;
 use App\Models\Ticket;
@@ -53,12 +55,12 @@ class FetchClientMails extends Command
         $IMAP_client = Client::account('default');
         $IMAP_client->connect();
         $fetchTime = Carbon::now()->subMinutes(15);
-        // $messages = $IMAP_client->getFolder('INBOX')->messages()->since($fetchTime)->get();
-        if ($lastUid == 0) {
-            $messages = $IMAP_client->getFolder('INBOX')->messages()->since($fetchTime)->limit(20)->get();
-        } else {
-            $messages = $IMAP_client->getFolder('INBOX')->messages()->sinceUid($lastUid)->limit(20)->get();
-        }
+        $messages = $IMAP_client->getFolder('INBOX')->messages()->since($fetchTime)->get();
+        // if ($lastUid == 0) {
+            // $messages = $IMAP_client->getFolder('INBOX')->messages()->since($fetchTime)->limit(20)->get();
+        // } else {
+        //     $messages = $IMAP_client->getFolder('INBOX')->messages()->sinceUid($lastUid)->limit(20)->get();
+        // }
 
         foreach ($messages as $message) {
             $data = $this->mailHelper->processIMAPEmail($message);
@@ -112,6 +114,7 @@ class FetchClientMails extends Command
             'received_at' => Carbon::now(),
             'created_at' => $data['created_at']
         ]);
+        NotifyClientReplyEmail::dispatch($ticket);
         $this->handleAttachments($receivedEmail, $message);
         $this->info("Reply added to ticket ID {$ticket->id}");
         Log::info("Reply processed for ticket ID {$ticket->id}");
@@ -138,6 +141,7 @@ class FetchClientMails extends Command
             'received_at' => Carbon::now(),
             'created_at' => $data['created_at']
         ]);
+        NotifyTicketHasBeenCreated::dispatch($ticket);
         $this->handleAttachments($mail, $message);
         $this->info('Ticket' . $ticket->subject . ' created successfully.');
     }

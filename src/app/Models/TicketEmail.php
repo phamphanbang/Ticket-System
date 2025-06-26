@@ -28,6 +28,7 @@ class TicketEmail extends Model
         'type',
         'status',
         'received_at',
+        'created_at'
     ];
 
     /**
