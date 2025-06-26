@@ -48,22 +48,6 @@ class AttachmentController extends Controller
 
   public function show(Request $request, string $attachmentId)
   {
-    // $attachment = $this->attachmentService->getAttachmentById($attachmentId);
-
-    // if (!Storage::exists($attachment->file_path . '/' . $attachment->file_name)) {
-    //   return $this->error('File not found', 404);
-    // }
-
-    // $mimeType = Storage::mimeType($attachment->file_path);
-
-    // return response()->stream(function () use ($attachment) {
-    //     $stream = Storage::readStream($attachment->file_path . '/' . $attachment->file_name);
-    //     fpassthru($stream);
-    //     fclose($stream);
-    // }, 200, [
-    //     'Content-Type' => $mimeType,
-    //     'Content-Disposition' => 'inline; filename="' . basename($attachment->file_name) . '"',
-    // ]);
     $attachment = $this->attachmentService->getAttachmentById($attachmentId);
     $fullPath = $attachment->file_path . '/' . $attachment->file_name;
 
