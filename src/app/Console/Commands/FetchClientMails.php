@@ -135,7 +135,8 @@ class FetchClientMails extends Command
     private function handleAttachments(TicketEmail $email, $message): void
     {
         foreach ($message->getAttachments() as $attachment) {
-            $filename = uniqid() . '_' . $attachment->getName();
+            $timestamp = now()->format('Ymd_His');
+            $filename = $attachment->getName() . '_' . $timestamp;
             $cid = trim($attachment->getContentId(), '<>');
             $this->info('process attachment : ' . $filename);
 

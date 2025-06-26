@@ -21,7 +21,8 @@ class AttachmentService
 
   public function saveAttachment(UploadedFile $file, $comment_id, $ticket_id,$email_id = null)
   {
-    $fileName = uniqid() . '_' . $file->getClientOriginalName();
+    $timestamp = now()->format('Ymd_His');
+    $fileName = $file->getClientOriginalName() . '_' . $timestamp;
     $fileExtension = $file->getClientOriginalExtension();
     $contentType = $file->getMimeType();
     $fileSize = $file->getSize();
