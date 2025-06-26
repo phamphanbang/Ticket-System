@@ -67,7 +67,7 @@ class StaffResponse extends Mailable
   {
     $email_attachments = [];
     foreach ($this->email_attachments as $attachment) {
-      $email_attachments[] = Attachment::fromStorage($attachment->file_path)->as($attachment->file_name);
+      $email_attachments[] = Attachment::fromStorage($attachment->file_path . '/' . $attachment->file_name)->as($attachment->file_name);
     }
     return $email_attachments;
   }
