@@ -38,7 +38,6 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withCommands([
-        // \App\Console\Commands\FetchClientMails::class,
         \App\Console\Commands\SyncSlackUsers::class,
     ])
     ->withExceptions(function (Exceptions $exceptions) {
