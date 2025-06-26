@@ -19,7 +19,7 @@ class MailService
   {
     $ticket = Ticket::where('id', $ticketId)->first();
     TicketValidator::checkTicketExists($ticket);
-    $query = $ticket->ticketEmails()->with('attachments')->orderBy('created_at', 'desc');
+    $query = $ticket->ticketEmails()->with('attachments')->orderBy('created_at', 'asc');
     if($cursor) {
       $cursorMail = TicketEmail::where('id', $cursor)->first();
       $mails = $query->where('created_at', '<', $cursorMail->created_at);
@@ -33,6 +33,7 @@ class MailService
     $ticket = Ticket::where('id', $ticketId)->first();
     TicketValidator::checkTicketExists($ticket);
     $user = Auth::user();
+    $body = $data['content'] ?? $data['body'];
 
     $latestMail = $ticket->ticketEmails()->where('message_id', '!=', null)->oldest()->first();
     $customMessageId = $this->generateMessageId();
@@ -42,7 +43,7 @@ class MailService
       'from_email' => env('MAIL_FROM_ADDRESS'),
       'from_name' => $user->name,
       'to_email' => $ticket->client->email,
-      'body' => $data['body'],
+      'body' => $body,
       'subject' => 'Re: ' . $latestMail->subject,
       'type' => 'reply',
       'ticket_id' => $ticket->id,
