@@ -42,7 +42,13 @@ class NotifyTicketHasBeenCompleted implements ShouldQueue
         $holder = $this->ticket->holder;
         if (!$holder->isSlackConnected()) return;
         $slackUserId = $holder->slackConnection->slack_user_id;
-        $staffName = $this->ticket->staff ? $this->ticket->staff->name : 'Unassigned';
+        $currentStaff = $this->ticket->staff;
+        $currentStaffDisplay = '';
+        if($currentStaff->isSlackConnected()) {
+            $currentStaffDisplay = "<@{$currentStaff->slackConnection->slack_user_id}>";
+        } else {
+            $currentStaffDisplay = $currentStaff->name ?? 'Unassigned';
+        }
         $ticketUrl = $this->ticket->ticketUrl();
 
         $blocks = [
@@ -54,7 +60,7 @@ class NotifyTicketHasBeenCompleted implements ShouldQueue
                         . "Hey, <@$slackUserId>! Your ticket has been marked as *completed*.\n"
                         . ":id: *Id:* {$this->ticket->id}\n"
                         . "👤 *Client:* {$this->ticket->client->name}\n"
-                        . "🧑‍💼 *Assigned To:* {$staffName}\n"
+                        . "🧑‍💼 *Assigned To:* {$currentStaffDisplay}\n"
                         . "You can review the completed ticket in the Ticket app."
                 ]
             ],
@@ -87,7 +93,7 @@ class NotifyTicketHasBeenCompleted implements ShouldQueue
         if($currentStaff->isSlackConnected()) {
             $currentStaffDisplay = "<@{$currentStaff->slackConnection->slack_user_id}>";
         } else {
-            $currentStaffDisplay = $currentStaff->name;
+            $currentStaffDisplay = $currentStaff->name ?? 'Unassigned';
         }
         foreach ($staffs as $staff) {
             if (!$staff->isSlackConnected()) continue;
