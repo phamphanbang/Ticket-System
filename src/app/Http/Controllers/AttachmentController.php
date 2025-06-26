@@ -8,14 +8,14 @@ use App\Services\AttachmentService;
 use App\Services\FileConversionService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\Storage;
 
 class AttachmentController extends Controller
 {
   use ApiResponse;
   public function __construct(
-    protected AttachmentService $attachmentService
+    protected AttachmentService $attachmentService,
+    protected FileConversionService $fileConversionService
   ) {}
 
   public function getTicketAttachments(string $id)
@@ -57,11 +57,11 @@ class AttachmentController extends Controller
 
     $extension = strtolower(pathinfo($attachment->file_name, PATHINFO_EXTENSION));
 
-    if (in_array($extension, ['docx', 'xlsx', 'doc', 'xls', 'pptx', 'ppt', 'txt', 'csv'])) {
-      $pdfPath = preg_replace('/\.(docx|xlsx|doc|xls|pptx|ppt|txt|csv)$/i', '.pdf', $fullPath);
+    if ($this->fileConversionService->shouldConvertToPdf($extension)) {
+      $pdfPath = $this->fileConversionService->getPdfPath($fullPath);
 
       if (!Storage::exists($pdfPath)) {
-        $pdfPath = app(FileConversionService::class)->convertToPdf($fullPath);
+        $pdfPath = $this->fileConversionService->convertToPdf($fullPath);
 
         if (!$pdfPath || !Storage::exists($pdfPath)) {
           return $this->error('PDF conversion failed', 500);
