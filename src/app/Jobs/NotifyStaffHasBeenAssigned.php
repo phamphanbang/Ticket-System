@@ -38,10 +38,16 @@ class NotifyStaffHasBeenAssigned implements ShouldQueue
     {
         $staffIds = TicketAuditLog::select('staff_id')->where('ticket_id', $this->ticket->id)->distinct()->pluck('staff_id');
         $staffs = User::whereIn('id', $staffIds)->get();
+        $currentStaff = $this->ticket->staff;
+        $currentStaffDisplay = '';
+        if($currentStaff->isSlackConnected()) {
+            $currentStaffDisplay = "<@{$currentStaff->slackConnection->slack_user_id}>";
+        } else {
+            $currentStaffDisplay = $currentStaff->name;
+        }
 
         foreach ($staffs as $staff) {
             if (!$staff->isSlackConnected()) continue;
-            $staffName = $staff->name;
             $ticketUrl = $this->ticket->ticketUrl();
 
             $blocks = [
@@ -53,7 +59,7 @@ class NotifyStaffHasBeenAssigned implements ShouldQueue
                             . "Heads up, team! This ticket has been *reassigned* to a new staff member.\n"
                             . ":id: *Id:* {$this->ticket->id}\n"
                             . "👤 *Client:* {$this->ticket->client->name}\n"
-                            . "🧑‍💼 *New Assignee:* {$staffName}\n"
+                            . "🧑‍💼 *New Assignee:* {$currentStaffDisplay}\n"
                             . "Please stay updated and coordinate if needed."
                     ]
                 ],

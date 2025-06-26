@@ -41,6 +41,7 @@ class NotifyTicketHasBeenCompleted implements ShouldQueue
     {
         $holder = $this->ticket->holder;
         if (!$holder->isSlackConnected()) return;
+        $slackUserId = $holder->slackConnection->slack_user_id;
         $staffName = $this->ticket->staff ? $this->ticket->staff->name : 'Unassigned';
         $ticketUrl = $this->ticket->ticketUrl();
 
@@ -50,7 +51,7 @@ class NotifyTicketHasBeenCompleted implements ShouldQueue
                 "text" => [
                     "type" => "mrkdwn",
                     "text" => "✅ *Ticket Completed: {$this->ticket->title}*\n"
-                        . "Hey, *{$holder->name}*! Your ticket has been marked as *completed*.\n"
+                        . "Hey, <@$slackUserId>! Your ticket has been marked as *completed*.\n"
                         . ":id: *Id:* {$this->ticket->id}\n"
                         . "👤 *Client:* {$this->ticket->client->name}\n"
                         . "🧑‍💼 *Assigned To:* {$staffName}\n"
@@ -81,10 +82,16 @@ class NotifyTicketHasBeenCompleted implements ShouldQueue
     {
         $staffIds = TicketAuditLog::select('staff_id')->where('ticket_id', $this->ticket->id)->distinct()->pluck('staff_id');
         $staffs = User::whereIn('id', $staffIds)->get();
-
+        $currentStaff = $this->ticket->staff;
+        $currentStaffDisplay = '';
+        if($currentStaff->isSlackConnected()) {
+            $currentStaffDisplay = "<@{$currentStaff->slackConnection->slack_user_id}>";
+        } else {
+            $currentStaffDisplay = $currentStaff->name;
+        }
         foreach ($staffs as $staff) {
             if (!$staff->isSlackConnected()) continue;
-            $staffName = $staff->name;
+            $slackUserId = $staff->slackConnection->slack_user_id;
             $ticketUrl = $this->ticket->ticketUrl();
 
             $blocks = [
@@ -93,10 +100,10 @@ class NotifyTicketHasBeenCompleted implements ShouldQueue
                     "text" => [
                         "type" => "mrkdwn",
                         "text" => "✅ *Ticket Completed: {$this->ticket->title}*\n"
-                            . "Hey, *{$staff->name}*! A ticket you assigned to has been marked as *completed*.\n"
+                            . "Hey, <@$slackUserId>*! A ticket you assigned to has been marked as *completed*.\n"
                             . ":id: *Id:* {$this->ticket->id}\n"
                             . "👤 *Client:* {$this->ticket->client->name}\n"
-                            . "🧑‍💼 *Assigned To:* {$staffName}\n"
+                            . "🧑‍💼 *Assigned To:* $currentStaffDisplay\n"
                             . "You can review the completed ticket in the Ticket app."
                     ]
                 ],

@@ -40,7 +40,7 @@ class NotifyClientReplyEmail implements ShouldQueue
   {
     $staff = $this->ticket->staff;
     if (!$staff || !$staff->isSlackConnected()) return;
-    $staffName = $staff->name;
+    $slackUserId = $staff->slackConnection->slack_user_id;
     $ticketUrl = $this->ticket->ticketUrl();
 
     $blocks = [
@@ -49,7 +49,7 @@ class NotifyClientReplyEmail implements ShouldQueue
         "text" => [
           "type" => "mrkdwn",
           "text" => "✉️ *Client Reply Received: {$this->ticket->title}*\n"
-            . "Hey *{$staff->name}*, the client has just replied to ticket *#{$this->ticket->id}* via email.\n"
+            . "Hey, <@$slackUserId>! the client has just replied to ticket *#{$this->ticket->id}* via email.\n"
             . "👤 *Client:* {$this->ticket->client->name}\n"
             . "Please check and respond accordingly."
         ]
