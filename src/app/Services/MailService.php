@@ -19,13 +19,13 @@ class MailService
   {
     $ticket = Ticket::where('id', $ticketId)->first();
     TicketValidator::checkTicketExists($ticket);
-    $query = $ticket->ticketEmails()->with('attachments')->orderBy('created_at', 'asc');
+    $query = $ticket->ticketEmails()->with('attachments')->orderBy('created_at', 'desc');
     if($cursor) {
       $cursorMail = TicketEmail::where('id', $cursor)->first();
       $mails = $query->where('created_at', '<', $cursorMail->created_at);
     }
     $mails = $query->take($limit + 1)->get();
-    return $mails;
+    return $mails->reverse();
   }
 
   public function send($ticketId, $data)

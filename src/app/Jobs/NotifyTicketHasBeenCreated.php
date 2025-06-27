@@ -46,9 +46,8 @@ class NotifyTicketHasBeenCreated implements ShouldQueue
                     "type" => "mrkdwn",
                     "text" => "📬 *New Ticket Created via Email: {$this->ticket->title}*\n"
                         . "Hey, <@$slackUserId>! a new ticket has been automatically created from a client's email.\n"
-                        . ":id: *Id:* {$this->ticket->id}\n"
                         . "👤 *Client:* {$this->ticket->client->name}\n"
-                        . "✉️ *Email Subject:* {$this->ticket->subject}\n"
+                        . "✉️ *Ticket title:* {$this->ticket->title}\n"
                         . "You’ve been assigned to handle this ticket."
                 ]
             ],

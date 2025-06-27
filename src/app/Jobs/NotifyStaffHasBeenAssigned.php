@@ -55,7 +55,6 @@ class NotifyStaffHasBeenAssigned implements ShouldQueue
                     "type" => "mrkdwn",
                     "text" => "🔄 *Ticket Reassigned: {$this->ticket->title}*\n"
                         . "Heads up, <@$slackUserId>! Your ticket has been *reassigned* to a new staff member.\n"
-                        . ":id: *Id:* {$this->ticket->id}\n"
                         . "👤 *Client:* {$this->ticket->client->name}\n"
                         . "🧑‍💼 *New Assignee:* {$currentStaffDisplay}\n"
                         . "Please stay updated and coordinate if needed."
@@ -104,7 +103,6 @@ class NotifyStaffHasBeenAssigned implements ShouldQueue
                         "type" => "mrkdwn",
                         "text" => "🔄 *Ticket Reassigned: {$this->ticket->title}*\n"
                             . "Heads up, team! This ticket has been *reassigned* to a new staff member.\n"
-                            . ":id: *Id:* {$this->ticket->id}\n"
                             . "👤 *Client:* {$this->ticket->client->name}\n"
                             . "🧑‍💼 *New Assignee:* {$currentStaffDisplay}\n"
                             . "Please stay updated and coordinate if needed."

@@ -1,1 +1,1 @@
-{{ $ticketEmail->body }}
+{!! $ticketEmail->body !!}

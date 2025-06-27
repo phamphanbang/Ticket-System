@@ -107,7 +107,6 @@ class NotifyTicketHasBeenCompleted implements ShouldQueue
                         "type" => "mrkdwn",
                         "text" => "✅ *Ticket Completed: {$this->ticket->title}*\n"
                             . "Hey, <@$slackUserId>*! A ticket you assigned to has been marked as *completed*.\n"
-                            . ":id: *Id:* {$this->ticket->id}\n"
                             . "👤 *Client:* {$this->ticket->client->name}\n"
                             . "🧑‍💼 *Assigned To:* $currentStaffDisplay\n"
                             . "You can review the completed ticket in the Ticket app."
