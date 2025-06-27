@@ -56,8 +56,8 @@ class AttachmentService
         }
       }
     });
-    event(new AttachmentCreated($attachments, $ticket));
-    return true;
+    event(new AttachmentCreated(collect($attachments), $ticket));
+    return $attachments;
   }
 
   public function deleteAttachment(string $attachmentId): bool
