@@ -19,7 +19,7 @@ class AttachmentService
   public function __construct(
   ) {}
 
-  public function saveAttachment(UploadedFile $file, $comment_id, $ticket_id,$email_id = null)
+  public function saveAttachment(UploadedFile $file, $comment_id, $ticket_id,$email_id = null,$file_status = 'used')
   {
     $timestamp = now()->format('Ymd_His');
     $fileName = $timestamp . '_' . $file->getClientOriginalName() ;
@@ -36,7 +36,8 @@ class AttachmentService
       'file_extension' => $fileExtension,
       'file_path' => $filePath,
       'file_size' => $fileSize,
-      'content_type' => $contentType
+      'content_type' => $contentType,
+      'file_status' => $file_status
     ]);
     return $attachment;
   }
@@ -52,7 +53,7 @@ class AttachmentService
 
       if (!empty($data['attachments'])) {
         foreach ($data['attachments'] as $file) {
-          $attachments[] = $this->saveAttachment($file, null, $ticket->id);
+          $attachments[] = $this->saveAttachment($file, null, $ticket->id,null,'temporary');
         }
       }
     });
@@ -103,7 +104,7 @@ class AttachmentService
   {
     $ticket = Ticket::findOrFail($id);
 
-    $attachments = $ticket->attachments()->get()->toArray();
+    $attachments = $ticket->attachments()->where('file_status', 'used')->get()->toArray();
 
     return $attachments;
   }
