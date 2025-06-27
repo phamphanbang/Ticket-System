@@ -1,7 +1,7 @@
 FROM php:8.3-fpm
 
 RUN apt-get update && apt-get install -y \
-    git curl zip unzip libonig-dev libxml2-dev libzip-dev libpng-dev cron procps \
+    git curl zip unzip libonig-dev libxml2-dev libzip-dev libpng-dev cron procps supervisor\
     openssl iputils-ping dnsutils telnet libnss3-tools tzdata\
     && docker-php-ext-install pdo_mysql zip
 
@@ -20,10 +20,7 @@ COPY ./docker/php/conf.d/custom.ini /usr/local/etc/php/conf.d/custom.ini
 
 RUN composer install
 
-# RUN chown -R www-data:www-data /var/www \
-#     && chmod -R 755 /var/www/storage
 RUN chmod -R 777 /var/www 
-    # chown -R www-data:www-data /var/www/storage
 
 COPY ./docker/laravel/laravel-cron /etc/laravel-cron
 
