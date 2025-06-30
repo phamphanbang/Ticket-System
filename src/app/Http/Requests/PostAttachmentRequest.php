@@ -22,6 +22,7 @@ final class PostAttachmentRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'file_status' => 'sometimes|in:temporary,used',
             'attachments' => 'nullable|array',
             'attachments.*' => 'file|max:10240'
         ];

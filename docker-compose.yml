@@ -27,6 +27,21 @@ services:
       - app
     networks:
       - ticket_network
+  
+  queue:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ticket_queue
+    command: ["/usr/bin/supervisord", "-c", "/etc/supervisord.conf"]
+    volumes:
+      - ./src:/var/www
+      - ./docker/supervisor/supervisord.conf:/etc/supervisord.conf
+      - ./docker/supervisor/laravel-worker.conf:/etc/supervisor/conf.d/laravel-worker.conf
+    depends_on:
+      - app
+    networks:
+      - ticket_network
 
   nginx:
     image: nginx:stable-alpine

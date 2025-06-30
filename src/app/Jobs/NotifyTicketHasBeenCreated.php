@@ -36,6 +36,7 @@ class NotifyTicketHasBeenCreated implements ShouldQueue
     {
         $holder = $this->ticket->holder;
         if (!$holder->isSlackConnected()) return;
+        $slackUserId = $holder->slackConnection->slack_user_id;
         $ticketUrl = $this->ticket->ticketUrl();
 
         $blocks = [
@@ -44,10 +45,9 @@ class NotifyTicketHasBeenCreated implements ShouldQueue
                 "text" => [
                     "type" => "mrkdwn",
                     "text" => "📬 *New Ticket Created via Email: {$this->ticket->title}*\n"
-                        . "Hey *{$holder->name}*, a new ticket has been automatically created from a client's email.\n"
-                        . ":id: *Id:* {$this->ticket->id}\n"
+                        . "Hey, <@$slackUserId>! a new ticket has been automatically created from a client's email.\n"
                         . "👤 *Client:* {$this->ticket->client->name}\n"
-                        . "✉️ *Email Subject:* {$this->ticket->subject}\n"
+                        . "✉️ *Ticket title:* {$this->ticket->title}\n"
                         . "You’ve been assigned to handle this ticket."
                 ]
             ],

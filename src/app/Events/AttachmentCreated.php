@@ -51,15 +51,11 @@ class AttachmentCreated implements ShouldBroadcast, ShouldDispatchAfterCommit
     foreach ($this->attachments as $attachment) {
       $attachments[] = [
         'id' => $attachment['id'],
-        'ticket_id' => $attachment['ticket_id'],
-        'comment_id' => $attachment['comment_id'],
         'file_path' => $attachment['file_path'],
         'file_name' => $attachment['file_name'],
         'file_size' => $attachment['file_size'],
         'file_extension' => $attachment['file_extension'],
-        'content_type' => $attachment['content_type'],
         'created_at' => $attachment['created_at']->format('Y-m-d H:i:s'),
-        'updated_at' => $attachment['updated_at']->format('Y-m-d H:i:s'),
       ];
     }
     return $attachments;

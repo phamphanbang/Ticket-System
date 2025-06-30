@@ -2,21 +2,16 @@
 
 namespace App\Console\Commands;
 
-use App\Constants\TicketStatus;
 use App\Helpers\MailHelper;
 use App\Jobs\NotifyClientReplyEmail;
 use App\Jobs\NotifyTicketHasBeenCreated;
-use App\Models\Client as ModelsClient;
 use App\Models\TicketEmail;
-use App\Models\Ticket;
 use App\Services\ClientService;
 use App\Services\CommentService;
-use App\Services\TicketMailService;
 use App\Services\TicketService;
 use Illuminate\Console\Command;
 use Webklex\IMAP\Facades\Client;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
@@ -50,17 +45,11 @@ class FetchClientMails extends Command
     public function handle()
     {
         $this->info('Fetching emails...');
-        Log::info('YourCommand is running at ' . now());
-        $lastUid = Cache::get('imap_last_uid', 0);
+        Log::info('Fetching emails is running at ' . now());
         $IMAP_client = Client::account('default');
         $IMAP_client->connect();
         $fetchTime = Carbon::now()->subMinutes(15);
         $messages = $IMAP_client->getFolder('INBOX')->messages()->since($fetchTime)->get();
-        // if ($lastUid == 0) {
-            // $messages = $IMAP_client->getFolder('INBOX')->messages()->since($fetchTime)->limit(20)->get();
-        // } else {
-        //     $messages = $IMAP_client->getFolder('INBOX')->messages()->sinceUid($lastUid)->limit(20)->get();
-        // }
 
         foreach ($messages as $message) {
             $data = $this->mailHelper->processIMAPEmail($message);
@@ -83,9 +72,6 @@ class FetchClientMails extends Command
             } else {
                 $this->handleReply($data, $message);
             }
-
-            // $message->setFlag('Seen');
-            Cache::put('imap_last_uid', $uid, 0);
         }
 
         $IMAP_client->disconnect();
@@ -114,10 +100,10 @@ class FetchClientMails extends Command
             'received_at' => Carbon::now(),
             'created_at' => $data['created_at']
         ]);
-        NotifyClientReplyEmail::dispatch($ticket);
         $this->handleAttachments($receivedEmail, $message);
+        NotifyClientReplyEmail::dispatch($ticket);
         $this->info("Reply added to ticket ID {$ticket->id}");
-        Log::info("Reply processed for ticket ID {$ticket->id}");
+        Log::info("Reply added to ticket ID {$ticket->id}");
     }
 
     private function handleNewTicket($data, $message): void
@@ -149,7 +135,8 @@ class FetchClientMails extends Command
     private function handleAttachments(TicketEmail $email, $message): void
     {
         foreach ($message->getAttachments() as $attachment) {
-            $filename = uniqid() . '_' . $attachment->getName();
+            $timestamp = now()->format('Ymd_His');
+            $filename = $timestamp . '_' . $attachment->getName() ;
             $cid = trim($attachment->getContentId(), '<>');
             $this->info('process attachment : ' . $filename);
 

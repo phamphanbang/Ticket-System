@@ -10,7 +10,6 @@ use App\Events\AuditLogDeleted;
 use App\Events\AuditLogged;
 use App\Events\TicketUpdated;
 use App\Helpers\MailHelper;
-use App\Jobs\FetchInfoCommandJob;
 use App\Mail\ClientTicketCreated;
 use App\Models\Ticket;
 use App\Models\TicketAuditLog;
@@ -225,7 +224,6 @@ class TicketService
       ]);
       Mail::to($ticket->client->email)
         ->queue(new ClientTicketCreated($ticket, $mail));
-      // FetchInfoCommandJob::dispatch($mail->id);
     }
 
     return $ticket;

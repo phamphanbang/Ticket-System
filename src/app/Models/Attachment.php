@@ -21,6 +21,7 @@ class Attachment extends Model
         'file_size',
         'file_extension',
         'content_type',
+        'file_status'
     ];
 
     public function comment()

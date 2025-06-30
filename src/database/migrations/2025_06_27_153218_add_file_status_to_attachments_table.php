@@ -11,8 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('user_slack_connections', function (Blueprint $table) {
-            $table->string('slack_channel_id')->nullable()->after('slack_team_id');
+        Schema::table('attachments', function (Blueprint $table) {
+            $table->string('file_status')->default('used');    
         });
     }
 
@@ -21,6 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        //
+        Schema::table('attachments', function (Blueprint $table) {
+            $table->dropColumn('file_status');
+        });
     }
 };

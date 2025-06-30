@@ -35,14 +35,6 @@ final class AuditLogDeleted implements ShouldBroadcast, ShouldDispatchAfterCommi
   {
     return [
       'id' => $this->auditLog->id,
-      'ticket_id' => $this->auditLog->ticket_id,
-      'action' => $this->auditLog->action,
-      'status' => $this->auditLog->status,
-      'to_status' => $this->auditLog->to_status,
-      'holder' => $this->auditLog->holder ?? [],
-      'staff' => $this->auditLog->staff ?? [],
-      'start_at' => $this->auditLog->start_at->format('Y-m-d H:i:s'),
-      'end_at' => $this->auditLog->end_at?->format('Y-m-d H:i:s'),
     ];
   }
 }

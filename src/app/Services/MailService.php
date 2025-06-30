@@ -2,9 +2,9 @@
 
 namespace App\Services;
 
-use App\Jobs\FetchInfoCommandJob;
 use App\Events\MailCreated;
 use App\Mail\StaffResponse;
+use App\Models\Attachment;
 use App\Models\Ticket;
 use App\Models\TicketEmail;
 use App\Validators\TicketValidator;
@@ -26,7 +26,7 @@ class MailService
       $mails = $query->where('created_at', '<', $cursorMail->created_at);
     }
     $mails = $query->take($limit + 1)->get();
-    return $mails;
+    return $mails->reverse();
   }
 
   public function send($ticketId, $data)
@@ -34,6 +34,7 @@ class MailService
     $ticket = Ticket::where('id', $ticketId)->first();
     TicketValidator::checkTicketExists($ticket);
     $user = Auth::user();
+    $body = $data['content'] ?? $data['body'];
 
     $latestMail = $ticket->ticketEmails()->where('message_id', '!=', null)->oldest()->first();
     $customMessageId = $this->generateMessageId();
@@ -43,7 +44,7 @@ class MailService
       'from_email' => env('MAIL_FROM_ADDRESS'),
       'from_name' => $user->name,
       'to_email' => $ticket->client->email,
-      'body' => $data['body'],
+      'body' => $body,
       'subject' => 'Re: ' . $latestMail->subject,
       'type' => 'reply',
       'ticket_id' => $ticket->id,
@@ -54,6 +55,13 @@ class MailService
     if (isset($data['attachments'])) {
       foreach ($data['attachments'] as $attachment) {
         $attachments[] = $this->attachmentService->saveAttachment($attachment, null, $ticket->id, $mail->id);
+      }
+    }
+
+    if (isset($data['attachment_ids']) && !empty($data['attachment_ids'])) {
+      foreach ($data['attachment_ids'] as $attachmentId) {
+        $attachment = Attachment::findOrFail($attachmentId);
+        $attachment->update(['file_status' => 'used']);
       }
     }
 

@@ -18,11 +18,21 @@ class FileConversionService
     'txt',
     'csv',
   ];
+  public function shouldConvertToPdf(string $extension): bool
+  {
+    return in_array(strtolower($extension), $this->supportedExtensions);
+  }
+
+  public function getPdfPath(string $fullPath): string
+  {
+    $pattern = '/\.(' . implode('|', array_map('preg_quote', $this->supportedExtensions)) . ')$/i';
+    return preg_replace($pattern, '.pdf', $fullPath);
+  }
   public function convertToPdf(string $path): ?string
   {
     $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
 
-    if (!in_array($extension, $this->supportedExtensions)) {
+    if (!$this->shouldConvertToPdf($extension)) {
       Log::warning("File extension '{$extension}' is not supported for PDF conversion.");
       return null;
     }
@@ -47,7 +57,7 @@ class FileConversionService
     }
 
     // Save the PDF
-    $pdfPath = preg_replace('/\.(docx|xlsx|doc|xls|pptx|ppt|txt|csv)$/i', '.pdf', $path);
+    $pdfPath = $this->getPdfPath($path);
     Storage::put($pdfPath, $response->body());
 
     return $pdfPath;
